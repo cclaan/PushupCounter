@@ -1,0 +1,39 @@
+# Xcode
+*.pbxuser
+*.xccheckout
+*.xcscmblueprint
+xcuserdata/
+DerivedData/
+!default.mode1v3
+!default.mode2v3
+!default.pbxuser
+!default.xccheckout
+!default.xcscmblueprint
+
+# Swift Package Manager
+.build/
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Code Injection
+injectionforxcode/
+
+# macOS
+.DS_Store
+
+# Thumbnails
+._*
+
+# Files that might appear on external disks
+.Spotlight-V100
+.Trashes
