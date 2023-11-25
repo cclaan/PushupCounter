@@ -10,6 +10,8 @@
 @implementation DepthChecker
 
 
+/// Get the average depth value of pixels in depth range ( and a central 3rd window )
+///  'validPixels' is filled with number of used pixels 
 + (float) getAverageOfPixelsInRange:(CVPixelBufferRef) depthBuffer
                          minDepth:(float)minDepth
                          maxDepth:(float)maxDepth
@@ -20,24 +22,18 @@
         
     int w = (int)CVPixelBufferGetWidth(depthBuffer);
     int h = (int)CVPixelBufferGetHeight(depthBuffer);
-    
-    //printf("w: %5i  h: %5i \n", w, h );
-    
+        
     float * depth_in = (float*)CVPixelBufferGetBaseAddress(depthBuffer);
-    
-    auto num_pixels = w * h;
-    
+        
     // w:   640  h:   480
     // Depth: 256 x 192  1024
     
-    int pixel_step = 4;
+    //int pixel_step = 4;
     
     double num_valid = 0;
     
     double avg_depth = 0.0;
-    
-    //for ( int i = 0; i < num_pixels; i+=pixel_step ) {
-    
+            
     int pad_x = w / 3; // just take central window
     int pad_y = h / 3;
     
@@ -47,8 +43,6 @@
             
             int ptr = y * h + x;
             float depth = depth_in[ptr];
-            
-            //float depth = depth_in[i];
             
             if ( depth >= minDepth && depth <= maxDepth ) {
                 num_valid += 1.0;

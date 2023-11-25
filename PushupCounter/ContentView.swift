@@ -382,14 +382,14 @@ class ARKitViewController: UIViewController,
                                                        maxDepth: 0.85,
                                                        validPixels: &validPixels )
             
-            hasDepth = validPixels > 1000
+            hasDepth = validPixels > 7_000
             
         }
         
-        if hasDepth {
-            print( String(format: "grav diff %.2f   diff:  %.3f    Z: %.2f     valid:  %.0f ",
-                          gravity_diff, vecDiff , avgDepth, validPixels ))
-        }
+//        if hasDepth {
+//            print( String(format: "grav diff %.2f   diff:  %.3f    Z: %.2f     valid:  %.0f ",
+//                          gravity_diff, vecDiff , avgDepth, validPixels ))
+//        }
         
         DispatchQueue.main.async {
             self.faceDistanceViewModel?.phoneOnFloor = isPhoneOnFloor
