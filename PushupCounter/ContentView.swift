@@ -87,6 +87,12 @@ enum FaceState {
     }
 }
 
+struct FaceDistance {
+    let distance : Float
+    let date : Date
+    let isPushup : Bool
+}
+
 class FaceDistanceViewModel: ObservableObject {
     
     @Published var phoneOnFloor = false
@@ -250,12 +256,72 @@ struct LineGraph: View {
     var data: [Float]
     
     private let strokeColor: Color = .blue
-    private let lineWidth: CGFloat = 1
+    private let lineWidth: CGFloat = 6
     
     //private var frameIndex = 0
     
+    
+    func createPath(from data: [Float], in geometry: GeometryProxy, closePath: Bool) -> Path {
+        var path = Path()
+
+        for (index, value) in data.enumerated() {
+            
+            let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
+            let minDist: Float = 0.17
+            let maxDist: Float = 0.5
+
+            var val: Float = abs(value)
+            val = (val - minDist) / (maxDist - minDist)
+            val = min(max(val, 0.0), 1.0)
+            val -= 0.5
+            val *= Float(geometry.size.height * 0.9)
+            
+            let yPosition = geometry.size.height / 2 + CGFloat(val)
+
+            if index == 0 {
+                path.move(to: CGPoint(x: xPosition, y: yPosition))
+            } else {
+                path.addLine(to: CGPoint(x: xPosition, y: yPosition))
+            }
+            
+            if index == data.count - 1 {
+                path.addLine(to: CGPoint(x: geometry.size.width, y: yPosition))
+            }
+            
+        }
+        
+        
+        
+        if closePath {
+            path.addLine(to: CGPoint(x: geometry.size.width, y: geometry.size.height))
+            path.addLine(to: CGPoint(x: 0, y: geometry.size.height))
+            path.closeSubpath()
+        }
+
+        return path
+    }
+    
+    
     var body: some View {
+        
         GeometryReader { geometry in
+            
+            /*
+            Path { path in
+                
+                for (index, _) in data.enumerated() {
+                    
+                    let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
+
+                    if index % 12 == 0 {
+                        path.move(to: CGPoint(x: xPosition, y: 0 ))
+                        path.addLine(to: CGPoint(x: xPosition, y: geometry.size.height ))
+                    }
+                }
+            }
+            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            */
+            /*
             Path { path in
                 
                 for (index, value) in data.enumerated() {
@@ -265,7 +331,7 @@ struct LineGraph: View {
                     // -0.1 -> -0.6 max
                     // values are 0 -> -1.0 ish
                     let minDist : Float = 0.17
-                    let maxDist : Float = 0.65
+                    let maxDist : Float = 0.5
                     
                     var val : Float = abs(value) // face dist is negative
                     val = (val - minDist) / (maxDist - minDist)
@@ -286,8 +352,33 @@ struct LineGraph: View {
                 }
             }
             .stroke(strokeColor, lineWidth: lineWidth)
+            */
+            
+            // Using the path in your view
+            ZStack {
+                
+                createPath(from: data, in: geometry, closePath: true)
+                    .fill(LinearGradient(gradient: Gradient(colors: [Color(UIColor.systemBackground).opacity(0.7), Color(UIColor.systemBackground).opacity(0.5)]), startPoint: .top, endPoint: .bottom))
+
+                
+                createPath(from: data, in: geometry, closePath: true)
+                        .fill(LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.75), Color.blue.opacity(0.0)]), startPoint: .top, endPoint: .bottom))
+
+                    // Path for the stroke
+                    createPath(from: data, in: geometry, closePath: false)
+                        .stroke(strokeColor, lineWidth: lineWidth)
+            }
+            
+            
+            
         }
-        .background(Color.gray.opacity(0.13))
+        
+        //.background(Color.gray.opacity(0.25))
+        
+        //.background(Color(UIColor.systemBackground).opacity(0.25))
+        
+        //.background(Color.primary.opacity(0.33))
+        
     }
 }
 
@@ -308,7 +399,11 @@ class ARKitViewController: UIViewController,
         sceneView = ARSCNView(frame: view.bounds)
         view.addSubview(sceneView)
         
-        sceneView.frame = .init(x: 0, y: 0, width: 1, height: 0)
+        self.view.backgroundColor = UIColor.systemBackground
+        self.sceneView.backgroundColor = UIColor.systemBackground
+        
+        //sceneView.frame = .init(x: 0, y: 0, width: 1, height: 0)
+        sceneView.frame = .init(x: 0, y: 0, width: 70, height: 90)
         
         // Set the view's delegate
         sceneView.delegate = self
@@ -316,7 +411,7 @@ class ARKitViewController: UIViewController,
         // Set the session's delegate
         
         sceneView.session.delegate = self
-        sceneView.preferredFramesPerSecond = 5
+        sceneView.preferredFramesPerSecond = 15
         
         // Create a new ARFaceTrackingConfiguration
         let configuration = ARFaceTrackingConfiguration()
@@ -331,6 +426,9 @@ class ARKitViewController: UIViewController,
     
     }
 
+    override func viewDidLayoutSubviews() {
+        sceneView.frame = self.view.bounds
+    }
     
     private var averageVector : simd_float3 = .one
     private var prevAverageVector : simd_float3 = .zero
@@ -459,22 +557,70 @@ struct ARKitView: UIViewControllerRepresentable {
 }
 
 
+struct CounterView: View {
+    
+    @Binding var counter: Int
+
+    var body: some View {
+        
+        
+        VStack(spacing: 0) {
+            
+            Text("Pushup Count")
+                //.font(.system(size: 30))
+                .font(.system(size: 27, weight: .semibold, design: .monospaced))
+                .padding(.top, 8)
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 0) {
+                
+                Button(action: {
+                    if counter > 0 {
+                        counter -= 10
+                    }
+                }) {
+                    Image(systemName: "minus.circle.fill")
+                        .resizable()
+                        .frame(width: 70, height: 70)
+                }
+                .foregroundColor(.pink)
+                
+                Spacer()
+                
+                Text("\(counter)")
+                    //.font(.system(size: 100))
+                    .font(.system(size: 90, weight: .heavy, design: .monospaced))
+                    .padding(2)
+                    //.opacity(0.75)
+                    //.frame(minWidth: 110)
+                
+                Spacer()
+                
+                Button(action: {
+                    counter += 10
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .resizable()
+                        .frame(width: 70, height: 70)
+                }
+                .foregroundColor(.teal)
+                
+            }
+            .font(.system(size: 100))
+            
+        }
+        
+    }
+    
+}
 
 struct PushupCounterView: View {
     
     @AppStorage("counter") var counter: Int = 0
-    
-    var counterSets : Int {
-        return Int( counter / 10 )
-    }
-    
-    //@State private var dates: Set<DateComponents> = []
-    //@AppStorage("dates2") var dates2 : [Date] = []
-    
+            
     @State var faceTrackingEnabled : Bool = false
     
     @StateObject private var viewModel = FaceDistanceViewModel()
-
     
     @State private var completedDates: Set<DateComponents> = {
         if let data = UserDefaults.standard.data(forKey: "completedDates"),
@@ -506,95 +652,372 @@ struct PushupCounterView: View {
         }
     }
 
+    @ViewBuilder
+    var countView: some View {
+        
+        //VStack {
+            
+            Text("PUSHUPS")
+                .font(.system(size: 30))
+                .padding(6)
+                .foregroundColor(.secondary)
+            
+            
+            
+            
+        //}
+        
+        
+        HStack(spacing: 0) {
+            
+            Button(action: {
+                if counter > 0 {
+                    counter -= 10
+                }
+            }) {
+                Image(systemName: "minus.circle.fill")
+                    .resizable()
+                    .frame(width: 80, height: 80)
+            }
+            .foregroundColor(.green)
+            
+            Spacer()
+            
+            Text("\(counter)")
+                .font(.system(size: 80))
+                .padding(6)
+                .frame(minWidth: 110)
+            
+            Spacer()
+            
+            Button(action: {
+                counter += 10
+            }) {
+                Image(systemName: "plus.circle.fill")
+                    .resizable()
+                    .frame(width: 80, height: 80)
+            }
+            .foregroundColor(.green)
+            
+        }
+        .font(.system(size: 100))
+        //.padding(4)
+        
+    }
+    
+    @ViewBuilder var faceTrackingView : some View {
+        
+        VStack {
+            
+//            Toggle(isOn: $faceTrackingEnabled, label: {
+//                Text("Face Tracking")
+//            })
+//            .padding(4)
+//            
+            if faceTrackingEnabled {
+                
+                ZStack {
+
+                    if viewModel.phoneOnFloor {
+                        
+                        VStack {
+                            Spacer()
+                            HStack {
+                                
+                                Text(String(format: "%.2f", viewModel.faceDistance ))
+                                    .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundColor( .green )
+                                    .padding(4)
+                                
+                                Text(viewModel.faceState.label)
+                                    .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundColor( .blue )
+                                    .padding(4)
+                                
+                                Spacer()
+                            }
+                        }.frame(height: 50)
+                        
+                    } else {
+                        
+                        VStack {
+                            Spacer()
+                            Text("Place Phone Flat on Floor")
+                            //.font(.footnote)
+                                .foregroundColor( .orange )
+                            Spacer()
+                        }
+                        .frame(height: 50)
+                        
+                        
+                    }
+                    
+                    
+                    
+                    LineGraph(data: viewModel.faceDistances)
+                        .frame(height: 60)
+                        .cornerRadius(8)
+                        .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
+                        .padding(2)
+                    
+                }
+            }
+            
+        }
+        //.padding(4)
+        
+        
+    }
+    
+    @ViewBuilder var actionsView : some View {
+        
+        HStack {
+            //Spacer()
+            Button(action: {
+                counter = 0
+            }, label: {
+                Text("Reset Count")
+                    .padding()
+                    .foregroundColor(.red)
+                    .bold()
+                    .background(Color.secondary.opacity(0.2))
+                    .cornerRadius(18)
+                
+            })
+            
+            Spacer()
+                //.frame(width: 20)
+            
+            Button(action: {
+                addDay()
+            }, label: {
+                Text("Mark Today Done")
+                    .padding()
+                    .bold()
+                //.foregroundColor(.primary)
+                    .background(Color.secondary.opacity(0.2))
+                    .cornerRadius(18)
+                
+            })
+            //Spacer()
+            
+        }
+        
+    }
+    
+    @ViewBuilder var calendarView : some View {
+        
+        VStack(spacing: 0) {
+            Text("\(completedDates.count) Days Completed")
+                .font(.title2)
+                .bold()
+            
+            MultiDatePicker("Dates Available", selection: $completedDates)
+                .foregroundColor(.mint)
+                .fixedSize()
+            
+        }
+    }
+    
+    @ViewBuilder var floatingCameraView : some View {
+        VStack {
+            
+            HStack {
+                
+                Spacer().frame(width: 45)
+                
+                ARKitView(viewModel: viewModel)
+                //.frame(width: 0, height: 0)
+                    .frame(width: 70, height: 90)
+                    .cornerRadius(12)
+                    .shadow(radius: 8)
+                
+                    .onReceive(viewModel.thresholdPassed) { _ in
+                        counter += 1
+                    }
+                Spacer()
+            }
+            
+            Spacer()
+            
+        }
+    }
     
     //@State private var counter: Int = 0
     //@State private var faceDistance: Float = 0.0
 
-    var body: some View {
-        ScrollView {
+    
+    @ViewBuilder var portraitView: some View {
+        
+        ZStack {
             
-            VStack(spacing: 14) {
+            ScrollView {
                 
+                VStack(spacing: 4) {
+                                        
+                    countView
+                                        
+                    faceTrackingView
+                    
+                    Divider()
+                    
+                    actionsView
+                    
+                }
+                .padding(.horizontal, 50)
+                                            
+                Divider().padding()
+                
+                calendarView
+                
+            } // end scroll
+            
+            if faceTrackingEnabled {
+
+                floatingCameraView
+                
+            }
+            
+        } // end ZStack
+    }
+    
+    @ViewBuilder func landscapeView(size: CGSize) -> some View {
+        
+        
+        
+        HStack(spacing: 0) {
+            
+            
+            // Left Column
+            ZStack {
+                
+                if faceTrackingEnabled {
+                    
+                    ARKitView(viewModel: viewModel)
+                        .overlay(
+                            Rectangle()
+                                .foregroundColor(Color(UIColor.systemBackground).opacity(0.5))
+                                .blendMode(.overlay)
+                        )
+                        
+                        .overlay(
+                            Rectangle()
+                                .fill(LinearGradient(gradient: Gradient(colors: [Color(UIColor.systemBackground).opacity(1), Color(UIColor.systemBackground).opacity(0.0)]), startPoint: .top, endPoint: .center ))
+
+                        )
+                    
+                    //.frame(width: 0, height: 0)
+                    //.frame(width: 140, height: 90)
+                    //.cornerRadius(12)
+                    //.shadow(radius: 8)
+                    
+                    .onReceive(viewModel.thresholdPassed) { _ in
+                        counter += 1
+                    }
+                }
                 
                 VStack {
                     
-                    Text("PUSHUPS")
-                        .font(.system(size: 38))
-                        .padding(6)
-                        .foregroundColor(.secondary)
-                    
-                    
-                    Text("\(counter)")
-                        .font(.system(size: 110))
-                        .padding(6)
-                    
-                }
-                
-                VStack(spacing: 14) {
-                    
-                    HStack {
-                        ForEach(0..<10) { step in
-                            Circle().fill( step < counterSets ? Color.blue : Color.secondary.opacity(0.5) )
-                                .frame(width: 12, height: 12)
+                    VStack(spacing: 10) {
+                        
+                        HStack {
+                            
+//                            Image(systemName: "face.smiling")
+//                                .resizable()
+//                                .frame(width: 24, height: 24)
+                            
+//                            Text("Auto Counter")
+//                                .font(.title)
+//                                .padding()
+//                            
+                            Text("Auto Counter")
+                                //.font(.system(size: 30))
+                                .font(.system(size: 27, weight: .semibold, design: .monospaced))
+                                .padding(.top, 8)
+                                .foregroundColor(.secondary)
+                            
+                            
+                            
                         }
-                    }
-                    
-                    HStack {
-                        ForEach(0..<10) { step in
-                            Circle().fill( step < (counterSets-10) ? Color.blue : Color.secondary.opacity(0.5) )
-                                .frame(width: 12, height: 12)
+                        
+                        
+                        Toggle(isOn: $faceTrackingEnabled, label: {
+                            Text("Enable Auto Counter")
+                        }).padding(.horizontal, 20)
+                        
+                        
+                        if !faceTrackingEnabled {
+                            Text("Use the front facing camera to automatically count pushups")
+                                .foregroundColor(.secondary)
+                        } else {
+                            
+                            if !viewModel.phoneOnFloor {
+                                
+                                Text("Place the phone on the floor under your face")
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal, 20)
+                                
+                            } else {
+                                
+                                                                
+                                HStack {
+                                    
+                                    
+                                    Spacer()
+                                            
+//                                    Text("Counting")
+//                                        //.fontWeight(.semibold)
+//                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+//                                        //.foregroundColor(.indigo)
+//                                    
+                                    Text(String(format: "Distance: %4.2f", viewModel.faceDistance ))
+                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+                                        //.foregroundColor( .indigo)
+                                        .padding(4)
+                                    
+                                    Text(viewModel.faceState.label)
+                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+                                        .multilineTextAlignment(.leading)
+                                        .padding(4)
+                                        .frame(width: 50)
+                                    
+                                    Spacer()
+                                    
+                                }
+                                .foregroundColor( .indigo )
+                                    
+                                
+                                
+                                
+                            }
                         }
+                        
+                        
                     }
-                }
-                
-                
-                HStack(spacing: 100) {
-                    Button(action: {
-                        if counter > 0 {
-                            counter -= 10
-                        }
-                    }) {
-                        Image(systemName: "minus.circle.fill")
-                            .resizable()
-                            .frame(width: 100, height: 100)
-                    }
+                    .padding(.horizontal, 17)
                     
-                    Button(action: {
-                        counter += 10
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .resizable()
-                            .frame(width: 100, height: 100)
-                    }
-                }
-                .font(.system(size: 100))
-                .padding()
-                
-                // Face Tracking
-                //Divider()
-                
-                VStack {
-                    
-                    Toggle(isOn: $faceTrackingEnabled, label: {
-                        Text("Face Tracking")
-                    })
-                    .padding(4)
+                    Spacer()
                     
                     if faceTrackingEnabled {
                         
+                        
+                        
                         ZStack {
                             
+                            LineGraph(data: viewModel.faceDistances)
+                                .frame(maxHeight: 182)
+                            //.frame(height: 140)
+                            //.cornerRadius(8)
+                                .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
+                            //.padding(2)
                             
-                            
-                            //Text("Distance: \(String(format: "%.2f", viewModel.faceDistance))")
-                            //Text("Distance: \(viewModel.faceDistance)")
-                            
+                            /*
                             if viewModel.phoneOnFloor {
                                 
                                 VStack {
-                                    Spacer()
+                                    //Spacer()
                                     HStack {
-                                        
+                                        Spacer()
                                         Text(String(format: "%.2f", viewModel.faceDistance ))
                                             .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
                                             .foregroundColor( .green )
@@ -607,95 +1030,79 @@ struct PushupCounterView: View {
                                         
                                         Spacer()
                                     }
-                                }.frame(height: 50)
-                                
-                            } else {
-                                
-                                VStack {
-                                    Spacer()
-                                    Text("Place Phone Flat on Floor")
-                                        //.font(.footnote)
-                                        .foregroundColor( .orange )
                                     Spacer()
                                 }
-                                .frame(height: 50)
-                                
+                                .frame(maxHeight: 142)
+                                //.frame(height: 50)
                                 
                             }
-                            
-                            ARKitView(viewModel: viewModel)
-                                .frame(width: 0, height: 0)
-                            
-                                .onReceive(viewModel.thresholdPassed) { _ in
-                                    counter += 1
-                                }
-                            
-                            LineGraph(data: viewModel.faceDistances)
-                                            .frame(height: 60)
-                                            .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
-                                            .padding(2)
-                                                        
-                            
+                            */
                             
                         }
+                        
                     }
                     
+                } // end V
+                
+                
+                
+            } // end Z
+            
+            Divider()
+                
+            // Right Column
+            
+            ScrollView {
+                
+                VStack(spacing: 14) {
+                    
+                    CounterView(counter: $counter)
+                    
+                    
+                    
+                    //faceTrackingView
+                    
+                    //Divider()
+                    
+                    actionsView
+                    
                 }
-                //.padding(4)
+                .padding(.horizontal, 30)
                 
+                Divider().padding(12)
                 
-                Divider()
+                calendarView
                 
-                HStack {
-                    
-                    Button(action: {
-                        counter = 0
-                    }, label: {
-                        Text("Reset Count")
-                            .padding()
-                            .foregroundColor(.red)
-                            .background(Color.secondary.opacity(0.2))
-                            .cornerRadius(18)
-                        
-                    })
-                
-                    Spacer()
-                    
-                    Button(action: {
-                        addDay()
-                    }, label: {
-                        Text("Mark Today Done")
-                            .padding()
-                            .bold()
-                            //.foregroundColor(.primary)
-                            .background(Color.secondary.opacity(0.2))
-                            .cornerRadius(18)
-                        
-                    })
-                    
+            } // end scroll
+            .frame(width: size.width * 0.61)
+            .background( Color(UIColor.secondarySystemBackground) )
+            //.shadow(radius: /*@START_MENU_TOKEN@*/10/*@END_MENU_TOKEN@*/)
+        }
+        
+            
+            
+        
+        
+    }
+    
+    var body: some View {
+        
+        Group {
+            GeometryReader { reader in
+                if reader.size.width > reader.size.height {
+                    landscapeView(size: reader.size)
+                } else {
+                    portraitView
                 }
                 
             }
-            .padding(.horizontal, 50)
-            
-            
-            
-            Divider().padding()
-            
-            Text("\(completedDates.count) Days Completed")
-                .font(.title2)
-                .bold()
-                
-                
-            
-            MultiDatePicker("Dates Available", selection: $completedDates)
-                .foregroundColor(.mint)
-                        .fixedSize()
-                        
-                        //.allowsHitTesting(/*@START_MENU_TOKEN@*/false/*@END_MENU_TOKEN@*/)
-            
-        } // end scroll
+        }
+        .edgesIgnoringSafeArea([.vertical, .leading])
+        //.edgesIgnoringSafeArea(.all)
+        
     }
+    
+    
 }
 
 #Preview {
