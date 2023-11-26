@@ -99,7 +99,8 @@ class FaceDistanceViewModel: ObservableObject {
     
     //@Published var faceVisible = false
     
-    @Published var faceDistances: [Float] = []
+    //@Published var faceDistances: [Float] = []
+    @Published var faceDistances: [FaceDistance] = []
     
     @Published var faceDistance : Float = 0
     
@@ -227,9 +228,11 @@ class FaceDistanceViewModel: ObservableObject {
             faceDistances.removeFirst()
         }
         
-        faceDistances.append(newDistance)
+        //faceDistances.append(newDistance)
+        //faceDistances.append( .init(distance: newDistance, date: Date(), isPushup: false) )
         // -------------------------------   //
         
+        var isPushup = false
         
         self.faceDistance = newDistance
         
@@ -237,7 +240,13 @@ class FaceDistanceViewModel: ObservableObject {
             // clear history
             self.stateHistory.removeAll()
             thresholdPassed.send()
+            
+            //faceDistances.append( .init(distance: newDistance, date: Date(), isPushup: true) )
+            isPushup = true
         }
+        
+        faceDistances.append( .init(distance: newDistance, date: Date(), isPushup: isPushup) )
+        
         
 //        if (lastDistance >= threshold && newDistance < threshold) &&
 //            ( abs(lastThresholdTime.timeIntervalSinceNow) > debounceTimeSeconds ) {
@@ -253,7 +262,7 @@ class FaceDistanceViewModel: ObservableObject {
 
 struct LineGraph: View {
     
-    var data: [Float]
+    var data: [FaceDistance]
     
     private let strokeColor: Color = .blue
     private let lineWidth: CGFloat = 6
@@ -261,10 +270,49 @@ struct LineGraph: View {
     //private var frameIndex = 0
     
     
-    func createPath(from data: [Float], in geometry: GeometryProxy, closePath: Bool) -> Path {
+    func getPushupsPath(from data: [FaceDistance],
+                           in geometry: GeometryProxy) -> Path {
+        
         var path = Path()
 
-        for (index, value) in data.enumerated() {
+        for (index, info) in data.enumerated() {
+            
+            let value = info.distance
+            //let date = info.date
+            
+            if !info.isPushup {
+                continue
+            }
+            
+            let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
+            let minDist: Float = 0.17
+            let maxDist: Float = 0.5
+
+            var val: Float = abs(value)
+            val = (val - minDist) / (maxDist - minDist)
+            val = min(max(val, 0.0), 1.0)
+            val -= 0.5
+            val *= Float(geometry.size.height * 0.9)
+            
+            let yPosition = geometry.size.height / 2 + CGFloat(val)
+
+            path.move(to: CGPoint(x: xPosition, y: yPosition))
+            path.addLine(to: CGPoint(x: xPosition, y: geometry.size.height))
+            
+            
+        }
+        
+        return path
+    }
+    
+    func createPath(from data: [FaceDistance], in geometry: GeometryProxy, closePath: Bool) -> Path {
+        
+        var path = Path()
+
+        for (index, info) in data.enumerated() {
+            
+            let value = info.distance
+            //let date = info.date
             
             let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
             let minDist: Float = 0.17
@@ -364,9 +412,19 @@ struct LineGraph: View {
                 createPath(from: data, in: geometry, closePath: true)
                         .fill(LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.75), Color.blue.opacity(0.0)]), startPoint: .top, endPoint: .bottom))
 
-                    // Path for the stroke
-                    createPath(from: data, in: geometry, closePath: false)
-                        .stroke(strokeColor, lineWidth: lineWidth)
+                // Pushup Strokes
+                let dashPattern: [CGFloat] = [10, 14]
+
+                getPushupsPath(from: data, in: geometry)
+                    .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round, miterLimit: 0, dash: dashPattern))
+                        .foregroundColor(.pink)
+                    //.stroke(.orange, lineWidth: lineWidth)
+                
+                // Graph Stroke
+                createPath(from: data, in: geometry, closePath: false)
+                    .stroke(strokeColor, lineWidth: lineWidth)
+                
+                
             }
             
             
@@ -709,24 +767,51 @@ struct PushupCounterView: View {
         
         VStack {
             
-//            Toggle(isOn: $faceTrackingEnabled, label: {
-//                Text("Face Tracking")
-//            })
-//            .padding(4)
-//            
+            Toggle(isOn: $faceTrackingEnabled, label: {
+                
+                HStack {
+                    Image(systemName: "sparkles")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(.yellow)
+                    
+                    Text("Auto Counter")
+                        .monospaced()
+                        .bold()
+                    
+                    Text("- Camera")
+                        .monospaced()
+                        .foregroundColor(.secondary)
+                        
+                    
+                }
+                //.font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                    
+            })
+            .padding(4)
+            
             if faceTrackingEnabled {
                 
                 ZStack {
 
+                    LineGraph(data: viewModel.faceDistances)
+                        .frame(height: 70)
+                        .cornerRadius(8)
+                        .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
+                        .padding(2)
+                    
+                    
                     if viewModel.phoneOnFloor {
                         
                         VStack {
+                            
                             Spacer()
+                            
                             HStack {
-                                
+                                Spacer().frame(width:8)
                                 Text(String(format: "%.2f", viewModel.faceDistance ))
                                     .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundColor( .green )
+                                    .foregroundColor( .blue )
                                     .padding(4)
                                 
                                 Text(viewModel.faceState.label)
@@ -736,6 +821,7 @@ struct PushupCounterView: View {
                                 
                                 Spacer()
                             }
+                            
                         }.frame(height: 50)
                         
                     } else {
@@ -743,6 +829,7 @@ struct PushupCounterView: View {
                         VStack {
                             Spacer()
                             Text("Place Phone Flat on Floor")
+                                .bold()
                             //.font(.footnote)
                                 .foregroundColor( .orange )
                             Spacer()
@@ -752,13 +839,6 @@ struct PushupCounterView: View {
                         
                     }
                     
-                    
-                    
-                    LineGraph(data: viewModel.faceDistances)
-                        .frame(height: 60)
-                        .cornerRadius(8)
-                        .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
-                        .padding(2)
                     
                 }
             }
@@ -773,6 +853,7 @@ struct PushupCounterView: View {
         
         HStack {
             //Spacer()
+            
             Button(action: {
                 counter = 0
             }, label: {
@@ -780,8 +861,12 @@ struct PushupCounterView: View {
                     .padding()
                     .foregroundColor(.red)
                     .bold()
-                    .background(Color.secondary.opacity(0.2))
+                    
+                    .background(Color(UIColor.tertiarySystemBackground))
+                
                     .cornerRadius(18)
+                    
+                    
                 
             })
             
@@ -794,8 +879,8 @@ struct PushupCounterView: View {
                 Text("Mark Today Done")
                     .padding()
                     .bold()
-                //.foregroundColor(.primary)
-                    .background(Color.secondary.opacity(0.2))
+                    //.background(Color(UIColor.secondarySystemBackground))
+                    .background(Color(UIColor.tertiarySystemBackground))
                     .cornerRadius(18)
                 
             })
@@ -807,7 +892,7 @@ struct PushupCounterView: View {
     
     @ViewBuilder var calendarView : some View {
         
-        VStack(spacing: 0) {
+        VStack(spacing: 3) {
             Text("\(completedDates.count) Days Completed")
                 .font(.title2)
                 .bold()
@@ -819,6 +904,7 @@ struct PushupCounterView: View {
         }
     }
     
+        /*
     @ViewBuilder var floatingCameraView : some View {
         VStack {
             
@@ -828,8 +914,8 @@ struct PushupCounterView: View {
                 
                 ARKitView(viewModel: viewModel)
                 //.frame(width: 0, height: 0)
-                    .frame(width: 70, height: 90)
-                    .cornerRadius(12)
+                    .frame(width: 80, height: 96)
+                    .cornerRadius(10)
                     .shadow(radius: 8)
                 
                     .onReceive(viewModel.thresholdPassed) { _ in
@@ -842,43 +928,80 @@ struct PushupCounterView: View {
             
         }
     }
+    */
     
     //@State private var counter: Int = 0
     //@State private var faceDistance: Float = 0.0
 
+    @ViewBuilder var bgCameraView: some View {
+        
+            
+        ARKitView(viewModel: viewModel)
+            
+//            .overlay(
+//                Rectangle()
+//                    .foregroundColor(Color(UIColor.systemBackground).opacity(0.6))
+//                    .blendMode(.overlay)
+//            )
+            
+            .overlay(
+                Rectangle()
+                    .fill(LinearGradient(gradient: Gradient(colors: [Color(UIColor.systemBackground).opacity(1.0), Color(UIColor.systemBackground).opacity(0.5)]), startPoint: .top, endPoint: .bottom ))
+
+            )
+        
+        .onReceive(viewModel.thresholdPassed) { _ in
+            counter += 1
+        }
+    
+        
+    }
     
     @ViewBuilder var portraitView: some View {
         
-        ZStack {
+        
+        ScrollView {
             
-            ScrollView {
+            ZStack {
                 
-                VStack(spacing: 4) {
-                                        
-                    countView
-                                        
+                if faceTrackingEnabled {
+                    bgCameraView
+                }
+                
+                
+                VStack(spacing: 16) {
+                    
+                    CounterView(counter: $counter )
+                    
                     faceTrackingView
                     
-                    Divider()
+                    //Divider()
                     
                     actionsView
                     
+                    Divider() // .padding()
+                    
                 }
-                .padding(.horizontal, 50)
-                                            
-                Divider().padding()
+                .padding(.horizontal, 20)
+                .background( Color(UIColor.secondarySystemBackground) )
                 
-                calendarView
-                
-            } // end scroll
-            
-            if faceTrackingEnabled {
-
-                floatingCameraView
                 
             }
+            //.background( Color(UIColor.secondarySystemBackground) )
+            //.edgesIgnoringSafeArea(.top)
             
-        } // end ZStack
+            
+            calendarView
+                .padding(.top, 10)
+                //.background( Color(UIColor.systemBackground) )
+            
+        }
+        // end scroll
+        //.scenePadding(.top, edges: .top)
+        //.edgesIgnoringSafeArea(.bottom)
+        
+        
+        
     }
     
     @ViewBuilder func landscapeView(size: CGSize) -> some View {
@@ -906,11 +1029,6 @@ struct PushupCounterView: View {
 
                         )
                     
-                    //.frame(width: 0, height: 0)
-                    //.frame(width: 140, height: 90)
-                    //.cornerRadius(12)
-                    //.shadow(radius: 8)
-                    
                     .onReceive(viewModel.thresholdPassed) { _ in
                         counter += 1
                     }
@@ -918,76 +1036,44 @@ struct PushupCounterView: View {
                 
                 VStack {
                     
-                    VStack(spacing: 10) {
+                    VStack(spacing: 14) {
                         
                         HStack {
                             
-//                            Image(systemName: "face.smiling")
-//                                .resizable()
-//                                .frame(width: 24, height: 24)
+                            Image(systemName: "sparkles")
+                                .resizable()
+                                .frame(width: 24, height: 24)
+                                .foregroundColor(.yellow)
                             
-//                            Text("Auto Counter")
-//                                .font(.title)
-//                                .padding()
-//                            
                             Text("Auto Counter")
-                                //.font(.system(size: 30))
                                 .font(.system(size: 27, weight: .semibold, design: .monospaced))
-                                .padding(.top, 8)
-                                .foregroundColor(.secondary)
-                            
-                            
                             
                         }
+                        .padding(.top, 8)
+                        .foregroundColor(.secondary)
+
                         
                         
                         Toggle(isOn: $faceTrackingEnabled, label: {
                             Text("Enable Auto Counter")
-                        }).padding(.horizontal, 20)
+                        }).padding(.horizontal, 30)
+                        
                         
                         
                         if !faceTrackingEnabled {
-                            Text("Use the front facing camera to automatically count pushups")
+                            
+                            Text("Use the front facing camera to auto count pushups")
                                 .foregroundColor(.secondary)
+                                .padding(.horizontal, 4)
+                            
                         } else {
                             
                             if !viewModel.phoneOnFloor {
                                 
                                 Text("Place the phone on the floor under your face")
-                                    .foregroundColor(.secondary)
+                                    .bold()
+                                    .foregroundColor(.orange)
                                     .padding(.horizontal, 20)
-                                
-                            } else {
-                                
-                                                                
-                                HStack {
-                                    
-                                    
-                                    Spacer()
-                                            
-//                                    Text("Counting")
-//                                        //.fontWeight(.semibold)
-//                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
-//                                        //.foregroundColor(.indigo)
-//                                    
-                                    Text(String(format: "Distance: %4.2f", viewModel.faceDistance ))
-                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
-                                        //.foregroundColor( .indigo)
-                                        .padding(4)
-                                    
-                                    Text(viewModel.faceState.label)
-                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
-                                        .multilineTextAlignment(.leading)
-                                        .padding(4)
-                                        .frame(width: 50)
-                                    
-                                    Spacer()
-                                    
-                                }
-                                .foregroundColor( .indigo )
-                                    
-                                
-                                
                                 
                             }
                         }
@@ -1006,37 +1092,38 @@ struct PushupCounterView: View {
                             
                             LineGraph(data: viewModel.faceDistances)
                                 .frame(maxHeight: 182)
-                            //.frame(height: 140)
-                            //.cornerRadius(8)
                                 .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
-                            //.padding(2)
+                                                        
                             
-                            /*
-                            if viewModel.phoneOnFloor {
+                            VStack(spacing: 0) {
                                 
-                                VStack {
-                                    //Spacer()
-                                    HStack {
-                                        Spacer()
-                                        Text(String(format: "%.2f", viewModel.faceDistance ))
-                                            .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
-                                            .foregroundColor( .green )
-                                            .padding(4)
-                                        
-                                        Text(viewModel.faceState.label)
-                                            .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
-                                            .foregroundColor( .blue )
-                                            .padding(4)
-                                        
-                                        Spacer()
-                                    }
+                                Spacer()
+                                
+                                HStack {
+                                    
+                                    
                                     Spacer()
+                                            
+                                    Text(String(format: "Distance: %4.2f", viewModel.faceDistance ))
+                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+                                        //.foregroundColor( .indigo)
+                                        .padding(4)
+                                    
+                                    Text(viewModel.faceState.label)
+                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+                                        .multilineTextAlignment(.leading)
+                                        .padding(4)
+                                        .frame(width: 66)
+                                    
+                                    Spacer()
+                                    
                                 }
-                                .frame(maxHeight: 142)
-                                //.frame(height: 50)
+                                .foregroundColor( .blue )
+                                .padding()
                                 
                             }
-                            */
+                            .frame(maxHeight: 182)
+                            
                             
                         }
                         
@@ -1057,13 +1144,7 @@ struct PushupCounterView: View {
                 VStack(spacing: 14) {
                     
                     CounterView(counter: $counter)
-                    
-                    
-                    
-                    //faceTrackingView
-                    
-                    //Divider()
-                    
+
                     actionsView
                     
                 }
@@ -1076,7 +1157,8 @@ struct PushupCounterView: View {
             } // end scroll
             .frame(width: size.width * 0.61)
             .background( Color(UIColor.secondarySystemBackground) )
-            //.shadow(radius: /*@START_MENU_TOKEN@*/10/*@END_MENU_TOKEN@*/)
+            
+            
         }
         
             
@@ -1088,16 +1170,36 @@ struct PushupCounterView: View {
     var body: some View {
         
         Group {
+            
             GeometryReader { reader in
                 if reader.size.width > reader.size.height {
                     landscapeView(size: reader.size)
+                        .edgesIgnoringSafeArea(.all)
                 } else {
-                    portraitView
+                    
+                    ZStack {
+                        
+                        // hack to add some fill above the safe area
+                        // in portrait -- sure there's a better way
+                        VStack {
+                            Rectangle().fill(Color(UIColor.secondarySystemBackground))
+                            .frame(maxHeight: 100)
+                            Spacer()
+                        }
+                        .edgesIgnoringSafeArea(.top)
+                        
+                        portraitView
+                        
+                        
+                    }
+                    //portraitView(size: reader.size)
+                    
                 }
                 
             }
         }
-        .edgesIgnoringSafeArea([.vertical, .leading])
+        
+        //.background( Color(UIColor.secondarySystemBackground) )
         //.edgesIgnoringSafeArea(.all)
         
     }
