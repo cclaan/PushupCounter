@@ -164,7 +164,9 @@ struct LineGraph: View {
     private let lineWidth: CGFloat = 6
     
     //private var frameIndex = 0
-    
+    let minDist: Float = 0.12
+    //let maxDist: Float = 0.5
+    let maxDist: Float = 0.6
     
     func getPushupsPath(from data: [FaceDistance],
                            in geometry: GeometryProxy) -> Path {
@@ -181,8 +183,7 @@ struct LineGraph: View {
             }
             
             let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
-            let minDist: Float = 0.17
-            let maxDist: Float = 0.5
+            
 
             var val: Float = abs(value)
             val = (val - minDist) / (maxDist - minDist)
@@ -192,6 +193,15 @@ struct LineGraph: View {
             
             let yPosition = geometry.size.height / 2 + CGFloat(val)
 
+            path.move(to: CGPoint(x: xPosition, y: yPosition))
+            
+            let r : CGFloat = 6
+            
+            let rect = CGRect(origin: .init(x: xPosition - r*0.5, y: yPosition-r*0.5 ), size: .init(width: r, height: r))
+            
+            path.addEllipse(in: rect )
+            //path.addRoundedRect(in: <#T##CGRect#> )
+            
             path.move(to: CGPoint(x: xPosition, y: yPosition))
             path.addLine(to: CGPoint(x: xPosition, y: geometry.size.height))
             
@@ -211,9 +221,7 @@ struct LineGraph: View {
             //let date = info.date
             
             let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
-            let minDist: Float = 0.17
-            let maxDist: Float = 0.5
-
+            
             var val: Float = abs(value)
             val = (val - minDist) / (maxDist - minDist)
             val = min(max(val, 0.0), 1.0)
@@ -261,17 +269,21 @@ struct LineGraph: View {
                         .fill(LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.75), Color.blue.opacity(0.0)]), startPoint: .top, endPoint: .bottom))
 
                 // Pushup Strokes
-                let dashPattern: [CGFloat] = [10, 14]
+                //let dashPattern: [CGFloat] = [10, 14]
 
-                getPushupsPath(from: data, in: geometry)
-                    .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round, miterLimit: 0, dash: dashPattern))
-                        .foregroundColor(.pink)
+                
                     //.stroke(.orange, lineWidth: lineWidth)
                 
                 // Graph Stroke
                 createPath(from: data, in: geometry, closePath: false)
                     .stroke(strokeColor, lineWidth: lineWidth)
                 
+                getPushupsPath(from: data, in: geometry)
+                    .stroke(.pink, lineWidth: lineWidth)
+                    .shadow(radius: 5)
+                
+//                    .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round, miterLimit: 0, dash: dashPattern))
+//                        .foregroundColor(.pink)
                 
             }
             
@@ -312,7 +324,7 @@ class ARKitViewController: UIViewController,
         // Set the session's delegate
         
         sceneView.session.delegate = self
-        sceneView.preferredFramesPerSecond = 15
+        sceneView.preferredFramesPerSecond = 30
         
         // Create a new ARFaceTrackingConfiguration
         let configuration = ARFaceTrackingConfiguration()
