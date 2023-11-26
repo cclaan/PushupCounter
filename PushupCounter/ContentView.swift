@@ -7,64 +7,9 @@
 
 import SwiftUI
 import Combine
-//import SwiftData
 import ARKit
 import SceneKit
 
-
-/*
-struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
-    var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
-}
-
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
-}
-*/
 
 
 enum FaceState {
@@ -96,10 +41,7 @@ struct FaceDistance {
 class FaceDistanceViewModel: ObservableObject {
     
     @Published var phoneOnFloor = false
-    
-    //@Published var faceVisible = false
-    
-    //@Published var faceDistances: [Float] = []
+        
     @Published var faceDistances: [FaceDistance] = []
     
     @Published var faceDistance : Float = 0
@@ -109,44 +51,10 @@ class FaceDistanceViewModel: ObservableObject {
     let thresholdPassed = PassthroughSubject<Void, Never>()
     
     private var lastDistance: Float = 0.0
-    
-    //private let threshold: Float = -0.25
+        
     private let threshold: Float = 0.25
 
-    //private var timer: Timer?
     
-    init() {
-        
-//        timer = Timer.scheduledTimer(withTimeInterval: 1/30.0, repeats: true) { [weak self] _ in
-//            self?.updateDistance()
-//        }
-        
-    }
-    
-    
-    
-//    // Old version
-//    var lastThresholdTime = Date.distantPast
-//    let debounceTimeSeconds : Double = 0.5
-//    func addNewDistance( _ newDistance : Float ) {
-//        
-//        if faceDistances.count >= 150 {
-//            faceDistances.removeFirst()
-//        }
-//        
-//        faceDistances.append(newDistance)
-//        
-//        self.faceDistance = newDistance
-//                
-//        if (lastDistance >= threshold && newDistance < threshold) &&
-//            ( abs(lastThresholdTime.timeIntervalSinceNow) > debounceTimeSeconds ) {
-//            thresholdPassed.send()
-//            lastThresholdTime = Date()
-//        }
-//        
-//        lastDistance = newDistance
-//        
-//    }
     
     var lastThresholdTime = Date.distantPast
     let debounceTimeSeconds : Double = 0.5
@@ -227,35 +135,23 @@ class FaceDistanceViewModel: ObservableObject {
         if faceDistances.count >= 150 {
             faceDistances.removeFirst()
         }
-        
-        //faceDistances.append(newDistance)
-        //faceDistances.append( .init(distance: newDistance, date: Date(), isPushup: false) )
-        // -------------------------------   //
-        
+                
         var isPushup = false
         
         self.faceDistance = newDistance
         
         if self.hasDonePushup() {
+            
             // clear history
             self.stateHistory.removeAll()
             thresholdPassed.send()
-            
-            //faceDistances.append( .init(distance: newDistance, date: Date(), isPushup: true) )
+                    
             isPushup = true
         }
         
-        faceDistances.append( .init(distance: newDistance, date: Date(), isPushup: isPushup) )
-        
-        
-//        if (lastDistance >= threshold && newDistance < threshold) &&
-//            ( abs(lastThresholdTime.timeIntervalSinceNow) > debounceTimeSeconds ) {
-//            thresholdPassed.send()
-//            lastThresholdTime = Date()
-//        }
-//        
-//        lastDistance = newDistance
-        
+        faceDistances.append( .init(distance: newDistance, 
+                                    date: Date(), isPushup: isPushup) )
+                
     }
     
 }
@@ -354,54 +250,6 @@ struct LineGraph: View {
         
         GeometryReader { geometry in
             
-            /*
-            Path { path in
-                
-                for (index, _) in data.enumerated() {
-                    
-                    let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
-
-                    if index % 12 == 0 {
-                        path.move(to: CGPoint(x: xPosition, y: 0 ))
-                        path.addLine(to: CGPoint(x: xPosition, y: geometry.size.height ))
-                    }
-                }
-            }
-            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-            */
-            /*
-            Path { path in
-                
-                for (index, value) in data.enumerated() {
-                    
-                    let xPosition = geometry.size.width / CGFloat(data.count) * CGFloat(index)
-                    
-                    // -0.1 -> -0.6 max
-                    // values are 0 -> -1.0 ish
-                    let minDist : Float = 0.17
-                    let maxDist : Float = 0.5
-                    
-                    var val : Float = abs(value) // face dist is negative
-                    val = (val - minDist) / (maxDist - minDist)
-                    val = min(max(val,0.0), 1.0)
-                    
-                    //val = lerp(val, 0.1, 0.7) *
-                    val -= 0.5 // -0.5:0.5
-                    val *= Float(geometry.size.height * 0.9)
-                    
-                    //let yPosition = geometry.size.height / 2 + CGFloat(value * 100)
-                    let yPosition = geometry.size.height / 2 + CGFloat( val )
-
-                    if index == 0 {
-                        path.move(to: CGPoint(x: xPosition, y: yPosition))
-                    } else {
-                        path.addLine(to: CGPoint(x: xPosition, y: yPosition))
-                    }
-                }
-            }
-            .stroke(strokeColor, lineWidth: lineWidth)
-            */
-            
             // Using the path in your view
             ZStack {
                 
@@ -431,11 +279,6 @@ struct LineGraph: View {
             
         }
         
-        //.background(Color.gray.opacity(0.25))
-        
-        //.background(Color(UIColor.systemBackground).opacity(0.25))
-        
-        //.background(Color.primary.opacity(0.33))
         
     }
 }
@@ -446,7 +289,7 @@ class ARKitViewController: UIViewController,
                             ARSessionDelegate
 {
     var sceneView: ARSCNView!
-    //var onDistanceUpdate: ((Float) -> Void)?
+    
     var faceDistanceViewModel: FaceDistanceViewModel?
 
 
@@ -461,7 +304,7 @@ class ARKitViewController: UIViewController,
         self.sceneView.backgroundColor = UIColor.systemBackground
         
         //sceneView.frame = .init(x: 0, y: 0, width: 1, height: 0)
-        sceneView.frame = .init(x: 0, y: 0, width: 70, height: 90)
+        //sceneView.frame = .init(x: 0, y: 0, width: 70, height: 90)
         
         // Set the view's delegate
         sceneView.delegate = self
@@ -504,20 +347,10 @@ class ARKitViewController: UIViewController,
         
         prevAverageVector = averageVector
         
-//        if let d = frame.sceneDepth {
-//            print("  ________-- depth?? ")
-//        }
-        
-        
-        
-        
         let worldUp : simd_float3 = .init(x: 0, y: -1, z: 0)
         
         let gravity_diff = simd_length(averageVector - worldUp)
-        
-        //print(" grav diff: ", gravity_diff )
-        
-        
+                
         let isPhoneOnFloor = (gravity_diff < 0.15) && (vecDiff < 0.0002 )
         
         var avgDepth : Float = 0
@@ -538,7 +371,7 @@ class ARKitViewController: UIViewController,
                                                        maxDepth: 0.85,
                                                        validPixels: &validPixels )
             
-            hasDepth = validPixels > 7_000
+            hasDepth = validPixels > 6_000
             
         }
         
@@ -557,6 +390,7 @@ class ARKitViewController: UIViewController,
     }
     
     /*
+     /// Face Anchor method -- not reliable
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         
         guard let faceAnchor = frame.anchors.first as? ARFaceAnchor else {
@@ -575,12 +409,6 @@ class ARKitViewController: UIViewController,
         
         let faceDistance = simd_length(facePos)
         
-        
-//        DispatchQueue.main.async {
-//            print("face: ", faceDistance )
-//            self.onDistanceUpdate?(faceDistance)
-//        }
-        
         DispatchQueue.main.async {
             
             self.faceDistanceViewModel?.faceVisible = faceAnchor.isTracked
@@ -597,20 +425,20 @@ class ARKitViewController: UIViewController,
 
 struct ARKitView: UIViewControllerRepresentable {
     
-    //@Binding var faceDistance: Float
+    
     @ObservedObject var viewModel: FaceDistanceViewModel
 
     func makeUIViewController(context: Context) -> ARKitViewController {
+        
         let viewController = ARKitViewController()
-//        viewController.onDistanceUpdate = { distance in
-//            self.faceDistance = distance
-//        }
+        
         viewController.faceDistanceViewModel = viewModel
         return viewController
     }
 
-    func updateUIViewController(_ uiViewController: ARKitViewController, context: Context) {
-        // Update the view controller if needed.
+    func updateUIViewController(_ uiViewController: ARKitViewController, 
+                                context: Context) {
+        
     }
 }
 
@@ -621,11 +449,9 @@ struct CounterView: View {
 
     var body: some View {
         
-        
         VStack(spacing: 0) {
             
             Text("Pushup Count")
-                //.font(.system(size: 30))
                 .font(.system(size: 27, weight: .semibold, design: .monospaced))
                 .padding(.top, 8)
                 .foregroundColor(.secondary)
@@ -646,11 +472,9 @@ struct CounterView: View {
                 Spacer()
                 
                 Text("\(counter)")
-                    //.font(.system(size: 100))
+
                     .font(.system(size: 90, weight: .heavy, design: .monospaced))
                     .padding(2)
-                    //.opacity(0.75)
-                    //.frame(minWidth: 110)
                 
                 Spacer()
                 
@@ -710,60 +534,10 @@ struct PushupCounterView: View {
         }
     }
 
-    @ViewBuilder
-    var countView: some View {
-        
-        //VStack {
-            
-            Text("PUSHUPS")
-                .font(.system(size: 30))
-                .padding(6)
-                .foregroundColor(.secondary)
-            
-            
-            
-            
-        //}
-        
-        
-        HStack(spacing: 0) {
-            
-            Button(action: {
-                if counter > 0 {
-                    counter -= 10
-                }
-            }) {
-                Image(systemName: "minus.circle.fill")
-                    .resizable()
-                    .frame(width: 80, height: 80)
-            }
-            .foregroundColor(.green)
-            
-            Spacer()
-            
-            Text("\(counter)")
-                .font(.system(size: 80))
-                .padding(6)
-                .frame(minWidth: 110)
-            
-            Spacer()
-            
-            Button(action: {
-                counter += 10
-            }) {
-                Image(systemName: "plus.circle.fill")
-                    .resizable()
-                    .frame(width: 80, height: 80)
-            }
-            .foregroundColor(.green)
-            
-        }
-        .font(.system(size: 100))
-        //.padding(4)
-        
-    }
     
-    @ViewBuilder var faceTrackingView : some View {
+    
+    // MARK: - View Components
+    @ViewBuilder var faceTrackingSectionPortrait : some View {
         
         VStack {
             
@@ -785,7 +559,7 @@ struct PushupCounterView: View {
                         
                     
                 }
-                //.font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                
                     
             })
             .padding(4)
@@ -828,13 +602,24 @@ struct PushupCounterView: View {
                         
                         VStack {
                             Spacer()
-                            Text("Place Phone Flat on Floor")
-                                .bold()
-                            //.font(.footnote)
-                                .foregroundColor( .orange )
+                            HStack(spacing: 0) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .resizable()
+                                    .frame(width: 22, height: 18)
+                                    .foregroundColor(.white)
+                                    .padding(.leading, 14)
+                                
+                                
+                                Text("Place Phone Flat on Floor")
+                                    .bold()
+                                    .foregroundColor( .white )
+                                    .padding(.horizontal)
+                            }
                             Spacer()
                         }
-                        .frame(height: 50)
+                        .frame(maxHeight: 44)
+                        .background(Color.orange.opacity(0.88))
+                        .cornerRadius(12)
                         
                         
                     }
@@ -844,7 +629,6 @@ struct PushupCounterView: View {
             }
             
         }
-        //.padding(4)
         
         
     }
@@ -852,7 +636,6 @@ struct PushupCounterView: View {
     @ViewBuilder var actionsView : some View {
         
         HStack {
-            //Spacer()
             
             Button(action: {
                 counter = 0
@@ -904,36 +687,7 @@ struct PushupCounterView: View {
         }
     }
     
-        /*
-    @ViewBuilder var floatingCameraView : some View {
-        VStack {
-            
-            HStack {
-                
-                Spacer().frame(width: 45)
-                
-                ARKitView(viewModel: viewModel)
-                //.frame(width: 0, height: 0)
-                    .frame(width: 80, height: 96)
-                    .cornerRadius(10)
-                    .shadow(radius: 8)
-                
-                    .onReceive(viewModel.thresholdPassed) { _ in
-                        counter += 1
-                    }
-                Spacer()
-            }
-            
-            Spacer()
-            
-        }
-    }
-    */
-    
-    //@State private var counter: Int = 0
-    //@State private var faceDistance: Float = 0.0
-
-    @ViewBuilder var bgCameraView: some View {
+    @ViewBuilder var bgCameraViewPortrait : some View {
         
             
         ARKitView(viewModel: viewModel)
@@ -946,7 +700,7 @@ struct PushupCounterView: View {
             
             .overlay(
                 Rectangle()
-                    .fill(LinearGradient(gradient: Gradient(colors: [Color(UIColor.systemBackground).opacity(1.0), Color(UIColor.systemBackground).opacity(0.5)]), startPoint: .top, endPoint: .bottom ))
+                    .fill(LinearGradient(gradient: Gradient(colors: [Color(UIColor.secondarySystemBackground).opacity(1.0), Color(UIColor.secondarySystemBackground).opacity(0.5)]), startPoint: .top, endPoint: .bottom ))
 
             )
         
@@ -965,40 +719,37 @@ struct PushupCounterView: View {
             ZStack {
                 
                 if faceTrackingEnabled {
-                    bgCameraView
+                    bgCameraViewPortrait
                 }
                 
                 
-                VStack(spacing: 16) {
+                VStack(spacing: 22) {
                     
                     CounterView(counter: $counter )
                     
-                    faceTrackingView
+                    faceTrackingSectionPortrait
                     
-                    //Divider()
+                    Divider()
                     
                     actionsView
                     
                     Divider() // .padding()
+                        //.padding(.top, 10)
                     
                 }
                 .padding(.horizontal, 20)
-                .background( Color(UIColor.secondarySystemBackground) )
+                //.background( Color(UIColor.secondarySystemBackground) )
                 
                 
             }
-            //.background( Color(UIColor.secondarySystemBackground) )
-            //.edgesIgnoringSafeArea(.top)
-            
+            .background( Color(UIColor.secondarySystemBackground) )
             
             calendarView
-                .padding(.top, 10)
-                //.background( Color(UIColor.systemBackground) )
+                .padding(.top, 20)
+                
             
         }
-        // end scroll
-        //.scenePadding(.top, edges: .top)
-        //.edgesIgnoringSafeArea(.bottom)
+        
         
         
         
@@ -1070,11 +821,26 @@ struct PushupCounterView: View {
                             
                             if !viewModel.phoneOnFloor {
                                 
-                                Text("Place the phone on the floor under your face")
-                                    .bold()
-                                    .foregroundColor(.orange)
-                                    .padding(.horizontal, 20)
-                                
+                                HStack {
+                                    
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .resizable()
+                                        .frame(width: 26, height: 22)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 6)
+                                    
+                                    Text("Place the phone on the floor\nwith the screen facing up")
+                                        .bold()
+                                        .lineLimit(2, reservesSpace: true)
+                                        .foregroundColor(.white)
+                                        //.padding(.horizontal, 20)
+                                        .padding(4)
+                                        //.frame(minHeight: 50)
+                                }
+                                .padding(10)
+                                .background(Color.orange.opacity(0.9))
+                                .cornerRadius(20)
+                                .padding(.top, 44)
                             }
                         }
                         
@@ -1172,9 +938,13 @@ struct PushupCounterView: View {
         Group {
             
             GeometryReader { reader in
+                
                 if reader.size.width > reader.size.height {
+                    
+                    // TODO: fix up the safe area BS
                     landscapeView(size: reader.size)
                         .edgesIgnoringSafeArea(.all)
+                    
                 } else {
                     
                     ZStack {
@@ -1183,7 +953,7 @@ struct PushupCounterView: View {
                         // in portrait -- sure there's a better way
                         VStack {
                             Rectangle().fill(Color(UIColor.secondarySystemBackground))
-                            .frame(maxHeight: 100)
+                            .frame(maxHeight: 200)
                             Spacer()
                         }
                         .edgesIgnoringSafeArea(.top)
@@ -1192,15 +962,13 @@ struct PushupCounterView: View {
                         
                         
                     }
-                    //portraitView(size: reader.size)
+                    
                     
                 }
                 
             }
         }
         
-        //.background( Color(UIColor.secondarySystemBackground) )
-        //.edgesIgnoringSafeArea(.all)
         
     }
     
