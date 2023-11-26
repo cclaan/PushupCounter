@@ -12,7 +12,6 @@
 		4249ABE92ADAA4E7002E6AC4 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4249ABE82ADAA4E7002E6AC4 /* Item.swift */; };
 		4249ABEB2ADAA4E8002E6AC4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4249ABEA2ADAA4E8002E6AC4 /* Assets.xcassets */; };
 		4249ABEE2ADAA4E8002E6AC4 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4249ABED2ADAA4E8002E6AC4 /* Preview Assets.xcassets */; };
-		425F7FF32B139BD2006785C6 /* TestGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425F7FF22B139BD2006785C6 /* TestGrid.swift */; };
 		42ED6BF72B1275C8009A124D /* DepthChecker.mm in Sources */ = {isa = PBXBuildFile; fileRef = 42ED6BF62B1275C8009A124D /* DepthChecker.mm */; };
 /* End PBXBuildFile section */
 
@@ -25,7 +24,6 @@
 		4249ABED2ADAA4E8002E6AC4 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		4249ABEF2ADAA4E8002E6AC4 /* PushupCounter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PushupCounter.entitlements; sourceTree = "<group>"; };
 		4249ABF02ADAA4E8002E6AC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		425F7FF22B139BD2006785C6 /* TestGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestGrid.swift; sourceTree = "<group>"; };
 		42ED6BF42B1275C7009A124D /* PushupCounter-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PushupCounter-Bridging-Header.h"; sourceTree = "<group>"; };
 		42ED6BF52B1275C8009A124D /* DepthChecker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DepthChecker.h; sourceTree = "<group>"; };
 		42ED6BF62B1275C8009A124D /* DepthChecker.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = DepthChecker.mm; sourceTree = "<group>"; };
@@ -63,7 +61,6 @@
 			children = (
 				4249ABE42ADAA4E7002E6AC4 /* PushupCounterApp.swift */,
 				4249ABE62ADAA4E7002E6AC4 /* ContentView.swift */,
-				425F7FF22B139BD2006785C6 /* TestGrid.swift */,
 				42ED6BF52B1275C8009A124D /* DepthChecker.h */,
 				42ED6BF62B1275C8009A124D /* DepthChecker.mm */,
 				4249ABE82ADAA4E7002E6AC4 /* Item.swift */,
@@ -159,7 +156,6 @@
 				4249ABE92ADAA4E7002E6AC4 /* Item.swift in Sources */,
 				4249ABE52ADAA4E7002E6AC4 /* PushupCounterApp.swift in Sources */,
 				42ED6BF72B1275C8009A124D /* DepthChecker.mm in Sources */,
-				425F7FF32B139BD2006785C6 /* TestGrid.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
