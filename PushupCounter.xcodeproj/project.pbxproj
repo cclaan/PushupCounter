@@ -296,6 +296,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PushupCounter/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Pushup Count";
+				INFOPLIST_KEY_NSCameraUsageDescription = "AI Pushup Counter";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -307,7 +308,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCounter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCount;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "PushupCounter/PushupCounter-Bridging-Header.h";
@@ -332,6 +333,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PushupCounter/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Pushup Count";
+				INFOPLIST_KEY_NSCameraUsageDescription = "AI Pushup Counter";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -343,7 +345,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCounter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCount;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "PushupCounter/PushupCounter-Bridging-Header.h";
