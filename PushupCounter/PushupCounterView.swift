@@ -12,6 +12,321 @@ import SceneKit
 
 
 
+
+extension Date {
+    func monthName() -> String {
+            let df = DateFormatter()
+            df.setLocalizedDateFormatFromTemplate("MMM")
+            return df.string(from: self)
+    }
+}
+
+private func weekdayOfFirstDayInMonth(year: Int, month: Int) -> Int {
+    var calendar = Calendar.current
+    calendar.firstWeekday = 1 // Sunday = 1, Monday = 2, etc.
+    let dateComponents = DateComponents(year: year, month: month)
+    let date = calendar.date(from: dateComponents)!
+    let weekday = calendar.component(.weekday, from: date)
+    return (weekday - calendar.firstWeekday + 7) % 7 // Adjust to have 0 index based
+}
+
+
+extension DateComponents {
+    
+    var isSaturday : Bool {
+        
+        // Create a calendar
+        let calendar = Calendar.current
+        
+        // Convert DateComponents to Date
+        if let date = calendar.date(from: self) {
+            
+            // Extract the weekday component
+            let weekday = calendar.component(.weekday, from: date)
+            
+            // Check if it's Saturday
+            if weekday == 7 {
+                return true
+            } else {
+                return false
+            }
+        } else {
+            print("Invalid date")
+            return false
+        }
+        
+    }
+    
+}
+
+struct CheckmarkBackground: View {
+    var body: some View {
+        ZStack {
+            Path { path in
+                path.move(to: CGPoint(x: 2, y: 10))
+                path.addLine(to: CGPoint(x: 16, y: 26))
+                path.addLine(to: CGPoint(x: 40, y: 0))
+            }
+            .stroke(style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round))
+            .fill(Color.blue)
+            
+            Path { path in
+                path.move(to: CGPoint(x: 2, y: 10))
+                path.addLine(to: CGPoint(x: 16, y: 26))
+                path.addLine(to: CGPoint(x: 40, y: 0))
+            }
+            .stroke(style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+            .fill(Color.teal)
+        }
+        
+    }
+}
+
+//(Circle()
+//                .stroke(Color(UIColor.secondarySystemBackground), lineWidth: 2)
+//                .background(Circle().fill(Color.pink))
+// 
+struct CheckmarkBackground2: View {
+    var body: some View {
+        ZStack {
+            
+            Circle()
+                .fill(Color.blue.opacity(0.5))
+                .frame(width: 19, height: 19)
+            
+            
+            Path { path in
+                path.move(to: CGPoint(x: 10, y: 16))
+                path.addLine(to: CGPoint(x: 14, y: 20))
+                path.addLine(to: CGPoint(x: 20, y: 12))
+            }
+            .stroke(style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+            .fill(Color.blue)
+            .offset(x:16, y: 3)
+            
+            Path { path in
+                path.move(to: CGPoint(x: 10, y: 16))
+                path.addLine(to: CGPoint(x: 14, y: 20))
+                path.addLine(to: CGPoint(x: 20, y: 12))
+            }
+            .stroke(style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .fill(Color.yellow)
+            .shadow(color: Color(.sRGBLinear, white: 0, opacity: 0.5), radius: 3.5)
+            //.shadow(color: .black, radius: 3)
+            .offset(x:16, y: 3)
+            
+            
+            
+            
+        }
+        //.position(x: 34.0, y: 23.0)
+        
+    }
+}
+
+struct CheckmarkBackground3: View {
+    var body: some View {
+        ZStack {
+            
+            Circle()
+                .stroke(Color(UIColor.systemBackground), lineWidth: 2)
+                .background(
+                    Circle().fill(Color.blue)
+                )
+                .frame(width: 19, height: 19)
+            
+            Path { path in
+                path.move(to: CGPoint(x: 10, y: 16))
+                path.addLine(to: CGPoint(x: 14, y: 20))
+                path.addLine(to: CGPoint(x: 20, y: 12))
+            }
+            .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            .fill(Color.white)
+            
+            
+        }
+        
+    }
+}
+
+struct CalendarView: View {
+    
+    @State private var currentYear: Int = Calendar.current.component(.year, from: Date())
+    @State private var currentMonth: Int = Calendar.current.component(.month, from: Date())
+    
+    @Binding var selectedDates: Set<DateComponents>
+
+    var body: some View {
+        VStack {
+            
+            HStack {
+                Button(action: { self.changeMonth(by: -1) }) {
+                    Image(systemName: "chevron.left")
+                        .padding(12)
+                        .background(Circle().fill( Color(UIColor.secondarySystemBackground) ))
+                }
+
+                Spacer()
+
+                Text(String(format: "%@ %i", monthName(from: currentMonth), currentYear))
+                    .font(.system(size: 16, weight: .semibold, design: .default))
+                    .foregroundStyle(Color.primary)
+                                
+                Spacer()
+
+                Button(action: { self.changeMonth(by: 1) }) {
+                    Image(systemName: "chevron.right")
+                        .padding(12)
+                        .background(Circle().fill( Color(UIColor.secondarySystemBackground) ))
+                }
+            }
+            .padding()
+            
+            // Days of the week header
+            HStack {
+                ForEach(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], id: \.self) { day in
+                    Text(day.uppercased())
+                        .font(.system(size: 13, weight: .semibold,
+                                      design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(.secondary)
+                }
+            }
+                        
+            // Calendar grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7)) {
+                
+                // Calculate the weekday of the first day of the month and add empty views
+                let weekdayOfFirst = weekdayOfFirstDayInMonth(year: currentYear, month: currentMonth)
+                ForEach(0..<weekdayOfFirst, id: \.self) { _ in
+                    Text("")
+                        .frame(width: 30, height: 30)
+                }
+                
+                ForEach(1...daysInMonth(year: currentYear, month: currentMonth), id: \.self) { day in
+                    
+                    let todayComponents = DateComponents(year: currentYear, month: currentMonth, day: day)
+                    
+                    let nextDate = DateComponents(year: currentYear, month: currentMonth, day: day+1)
+                                        
+                    if isSpecialDate(todayComponents) {
+                        
+                        
+                        ZStack {
+                            
+                            // Connect previous to today for streak
+                            if isSpecialDate(nextDate) && !todayComponents.isSaturday {
+                                
+                                Path { path in
+                                    path.move(to: CGPoint(x: 24, y: 15))
+                                    path.addLine(to: CGPoint(x: 80, y: 15))
+                                }
+                                .stroke(style: StrokeStyle(lineWidth: 30, lineCap: .round, lineJoin: .round))
+                                .fill(Color.blue)
+                            }
+                            
+                            Text("\(day)")
+                                //.fontWeight(.semibold)
+                                .font(.system(size: 14, weight: .semibold, 
+                                              design: .monospaced))
+                                .frame(width: 30, height: 30)
+                                .foregroundColor(Color.white)
+                                //.background(CheckmarkBackground2())
+                                .background(Circle().fill(Color.blue))
+                                .overlay(CheckmarkBackground2())
+                            
+                        }
+                            
+                    } else {
+                        
+                        Text("\(day)")
+                            .font(.system(size: 15, weight: .regular, 
+                                          design: .monospaced))
+                            .frame(width: 30, height: 30)
+                            //.background()
+                    }
+                }
+            }
+        }
+        .padding()
+    }
+
+    private func changeMonth(by amount: Int) {
+        // Adjust the current month
+        currentMonth += amount
+        if currentMonth > 12 {
+            currentMonth = 1
+            currentYear += 1
+        } else if currentMonth < 1 {
+            currentMonth = 12
+            currentYear -= 1
+        }
+    }
+
+    private func daysInMonth(year: Int, month: Int) -> Int {
+        let dateComponents = DateComponents(year: year, month: month)
+        let calendar = Calendar.current
+        let date = calendar.date(from: dateComponents)!
+        let range = calendar.range(of: .day, in: .month, for: date)!
+        return range.count
+    }
+
+    private func monthName(from month: Int) -> String {
+        
+        let dateFormatter = DateFormatter()
+        //dateFormatter.dateFormat = "LLLL"
+        dateFormatter.dateFormat = "MMMM"
+        let date = dateFormatter.calendar.date(from: DateComponents(month: month))!
+        
+        let s = dateFormatter.string(from: date)
+        //print(s)
+        return s
+        
+        
+    }
+    
+
+    private func getDate(year: Int, month: Int, day: Int) -> Date {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        return Calendar.current.date(from: components) ?? Date()
+    }
+
+//    private func isSpecialDate(_ date: Date) -> Bool {
+//        let formatter = DateFormatter()
+//        formatter.dateFormat = "yyyy-MM-dd"
+//        let dateString = formatter.string(from: date)
+//        return specialDates.contains(where: { formatter.string(from: $0) == dateString })
+//    }
+    private func isSpecialDate(_ dateComponents: DateComponents) -> Bool {
+            return selectedDates.contains {
+                $0.year == dateComponents.year &&
+                $0.month == dateComponents.month &&
+                $0.day == dateComponents.day
+            }
+        }
+}
+
+
+struct CalendarView_Previews: PreviewProvider {
+    
+    static var sampleDates : Set<DateComponents> {
+        //let now = Date().components
+        var dates : [DateComponents] = []
+        for i in 0...10 {
+            dates.append( DateComponents(year: 2023, month: 12, day: 6 + i) )
+        }
+        return Set(dates)
+    }
+    
+    static var previews: some View {
+        CalendarView(selectedDates: .constant(Self.sampleDates))
+    }
+}
+
+
 enum FaceState {
     case noFace
     case down
@@ -458,28 +773,70 @@ struct ARKitView: UIViewControllerRepresentable {
 struct CounterView: View {
     
     @Binding var counter: Int
-
+    @Binding var showingHelp : Bool
+    
     var body: some View {
         
         VStack(spacing: 0) {
             
-            Text("Pushup Count")
-                .font(.system(size: 27, weight: .semibold, design: .monospaced))
-                .padding(.top, 8)
-                .foregroundColor(.secondary)
+            ZStack {
+                
+                Text("Pushup Count")
+                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                    //.padding(.top, 8)
+                    .foregroundColor(.secondary)
+                
+                HStack {
+                    Spacer()
+                    Button {
+                        self.showingHelp = true
+                    } label: {
+                        VStack {
+                            //Image(systemName: "questionmark.circle.fill")
+                            Text("Help")
+                                .padding(.horizontal, 10)
+                                //.background(Color.gray)
+                                //.underline()
+                            //Image(systemName: "questionmark.circle.fill")
+                        }
+                    }
+
+                    
+                }
+                
+            }
+            .padding(.vertical, 7)
+            
             
             HStack(spacing: 0) {
                 
+                
+                
                 Button(action: {
                     if counter > 0 {
-                        counter -= 10
+                        counter -= 1
                     }
                 }) {
                     Image(systemName: "minus.circle.fill")
                         .resizable()
-                        .frame(width: 70, height: 70)
+                        .frame(width: 64, height: 64)
+                    
+                        .overlay(Circle()
+                                        .stroke(Color(UIColor.secondarySystemBackground), lineWidth: 2)
+                                        .background(Circle().fill(Color.pink))
+                                        //.fill(Color.red)
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            Text("1")
+                                                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                                                .foregroundColor(Color(UIColor.secondarySystemBackground))
+                                        ),
+                                    alignment: .bottomTrailing
+                                )
+                    
                 }
                 .foregroundColor(.pink)
+                .padding(.leading, 4)
                 
                 Spacer()
                 
@@ -495,12 +852,29 @@ struct CounterView: View {
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .resizable()
-                        .frame(width: 70, height: 70)
+                        .frame(width: 64, height: 64)
+                    
+                        .overlay(Circle()
+                                        .stroke(Color(UIColor.secondarySystemBackground), lineWidth: 2)
+                                        .background(Circle().fill(Color.teal))
+                                        //.fill(Color.red)
+                                 
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            Text("10")
+                                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                                .foregroundColor( Color(UIColor.secondarySystemBackground))
+                                        ),
+                                            //.position(x:48, y: 46)
+                                    alignment: .bottomTrailing
+                                )
+                    
                 }
                 .foregroundColor(.teal)
+                .padding(.trailing, 4)
                 
             }
-            .font(.system(size: 100))
+            //.font(.system(size: 100))
             
         }
         
@@ -508,11 +882,17 @@ struct CounterView: View {
     
 }
 
+
+// MARK: -
+
 struct PushupCounterView: View {
     
     @AppStorage("counter") var counter: Int = 0
             
     @State var faceTrackingEnabled : Bool = false
+    
+    @State var showingHelp = false
+    @AppStorage("hasSeenHelp") var hasSeenHelp : Bool = false
     
     @StateObject private var viewModel = FaceDistanceViewModel()
     
@@ -537,10 +917,24 @@ struct PushupCounterView: View {
 
     }
     
-    private func addDay() {
+    private var isTodayDone : Bool {
+        return completedDates.contains(todayComponents)
+    }
+    
+    private func removeToday() {
+        
+        completedDates.remove(todayComponents)
+        saveDatesToDisk()
+    }
+    
+    private func addToday() {
        
         completedDates.insert(todayComponents)
+        saveDatesToDisk()
         
+    }
+    
+    private func saveDatesToDisk() {
         if let data = try? JSONEncoder().encode(completedDates) {
             UserDefaults.standard.set(data, forKey: "completedDates")
         }
@@ -668,18 +1062,50 @@ struct PushupCounterView: View {
             Spacer()
                 //.frame(width: 20)
             
-            Button(action: {
-                addDay()
-            }, label: {
-                Text("Mark Today Done")
+            
+            if isTodayDone {
+                
+                Button(action: {
+                    removeToday()
+                }, label: {
+                    
+                    HStack {
+                        //Image(systemName: "arrow.uturn.backward")
+                        Image(systemName: "xmark")
+                            .resizable().aspectRatio(contentMode: .fit)
+                            .frame(height: 12)
+                        
+                        Text("Remove Today").bold()
+                            .padding(.horizontal, 8)
+                        //    Mark Today Done
+                    }
                     .padding()
-                    .bold()
-                    //.background(Color(UIColor.secondarySystemBackground))
                     .background(Color(UIColor.tertiarySystemBackground))
                     .cornerRadius(18)
+                    
+                })
                 
-            })
-            //Spacer()
+            } else {
+                
+                Button(action: {
+                    addToday()
+                }, label: {
+                    
+                    HStack {
+                        Image(systemName: "checkmark")
+                            .resizable().aspectRatio(contentMode: .fit)
+                            .frame(height: 12)
+                        
+                        Text("Mark Today Done").bold()
+                        
+                    }
+                    .padding()
+                    .background(Color(UIColor.tertiarySystemBackground))
+                    .cornerRadius(18)
+                    
+                })
+                
+            }
             
         }
         
@@ -692,9 +1118,11 @@ struct PushupCounterView: View {
                 .font(.title2)
                 .bold()
             
-            MultiDatePicker("Dates Available", selection: $completedDates)
-                .foregroundColor(.mint)
-                .fixedSize()
+//            MultiDatePicker("Dates Available", selection: $completedDates)
+//                .foregroundColor(.mint)
+//                .fixedSize()
+            
+            CalendarView(selectedDates: $completedDates)
             
         }
     }
@@ -737,7 +1165,8 @@ struct PushupCounterView: View {
                 
                 VStack(spacing: 22) {
                     
-                    CounterView(counter: $counter )
+                    CounterView(counter: $counter, 
+                                showingHelp: $showingHelp )
                     
                     faceTrackingSectionPortrait
                     
@@ -921,7 +1350,8 @@ struct PushupCounterView: View {
                 
                 VStack(spacing: 14) {
                     
-                    CounterView(counter: $counter)
+                    CounterView(counter: $counter,
+                                showingHelp: $showingHelp )
 
                     actionsView
                     
@@ -944,6 +1374,9 @@ struct PushupCounterView: View {
         
         
     }
+    
+    
+    // MARK: - Body
     
     var body: some View {
         
@@ -978,9 +1411,31 @@ struct PushupCounterView: View {
                     
                 }
                 
-            }
+            } // end GeometryReader
+            
+        } // end Group
+        
+        .onChange(of: faceTrackingEnabled) { newValue in
+            
+            UIApplication.shared.isIdleTimerDisabled = newValue
         }
         
+        .fullScreenCover(isPresented: self.$showingHelp)
+        {
+            PushupAppHelpView(showingHelp: self.$showingHelp)
+        }
+        .onAppear {
+            
+            if !self.hasSeenHelp && self.completedDates.count == 0 {
+            //if !self.hasSeenHelp {
+            //if true {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self.hasSeenHelp = true
+                    self.showingHelp = true
+                }
+            }
+            
+        }
         
     }
     
