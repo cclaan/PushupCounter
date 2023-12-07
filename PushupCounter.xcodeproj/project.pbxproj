@@ -332,7 +332,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCounter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCount;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "PushupCounter/PushupCounter-Bridging-Header.h";
@@ -369,7 +369,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCounter;
+				PRODUCT_BUNDLE_IDENTIFIER = com.laan.labs.PushupCount;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "PushupCounter/PushupCounter-Bridging-Header.h";
