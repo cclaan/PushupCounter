@@ -219,7 +219,7 @@ struct CalendarView: View {
                                 
                                 Path { path in
                                     path.move(to: CGPoint(x: 24, y: 15))
-                                    path.addLine(to: CGPoint(x: 80, y: 15))
+                                    path.addLine(to: CGPoint(x: 85, y: 15))
                                 }
                                 .stroke(style: StrokeStyle(lineWidth: 30, lineCap: .round, lineJoin: .round))
                                 .fill(Color.blue)
