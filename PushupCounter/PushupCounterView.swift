@@ -33,6 +33,18 @@ private func weekdayOfFirstDayInMonth(year: Int, month: Int) -> Int {
 
 extension DateComponents {
     
+    
+    static var todayComponents : DateComponents {
+        let currentDate = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: currentDate)
+        return components
+    }
+    
+    var isToday : Bool {
+        return Self.todayComponents == self
+    }
+    
     var isSaturday : Bool {
         
         // Create a calendar
@@ -154,8 +166,11 @@ struct CalendarView: View {
     @State private var currentYear: Int = Calendar.current.component(.year, from: Date())
     @State private var currentMonth: Int = Calendar.current.component(.month, from: Date())
     
+    
     @Binding var selectedDates: Set<DateComponents>
 
+    var onDateTap: ((DateComponents) -> Void)?
+    
     var body: some View {
         VStack {
             
@@ -208,44 +223,73 @@ struct CalendarView: View {
                     let todayComponents = DateComponents(year: currentYear, month: currentMonth, day: day)
                     
                     let nextDate = DateComponents(year: currentYear, month: currentMonth, day: day+1)
-                                        
-                    if isSpecialDate(todayComponents) {
+                    
+                    Button(action: {
                         
+                        onDateTap?(todayComponents)
                         
-                        ZStack {
+                    }, label: {
+                        
+                        if isSpecialDate(todayComponents) {
                             
-                            // Connect previous to today for streak
-                            if isSpecialDate(nextDate) && !todayComponents.isSaturday {
+                            
+                            ZStack {
                                 
-                                Path { path in
-                                    path.move(to: CGPoint(x: 24, y: 15))
-                                    path.addLine(to: CGPoint(x: 85, y: 15))
+                                // Connect previous to today for streak
+                                if isSpecialDate(nextDate) && !todayComponents.isSaturday {
+                                    
+                                    Path { path in
+                                        path.move(to: CGPoint(x: 24, y: 15))
+                                        path.addLine(to: CGPoint(x: 85, y: 15))
+                                    }
+                                    .stroke(style: StrokeStyle(lineWidth: 30, lineCap: .round, lineJoin: .round))
+                                    .fill(Color.blue)
                                 }
-                                .stroke(style: StrokeStyle(lineWidth: 30, lineCap: .round, lineJoin: .round))
-                                .fill(Color.blue)
+                                
+                                Text("\(day)")
+                                    //.fontWeight(.semibold)
+                                    .font(.system(size: 14, weight: .semibold,
+                                                  design: .monospaced))
+                                    .frame(width: 30, height: 30)
+                                    .foregroundColor(Color.white)
+                                    //.background(CheckmarkBackground2())
+                                    .background(Circle().fill(Color.blue))
+                                    .overlay(CheckmarkBackground2())
+                                
                             }
                             
+                        } else if todayComponents.isToday {
+                            
                             Text("\(day)")
-                                //.fontWeight(.semibold)
-                                .font(.system(size: 14, weight: .semibold, 
+                                .font(.system(size: 15, weight: .semibold,
                                               design: .monospaced))
                                 .frame(width: 30, height: 30)
-                                .foregroundColor(Color.white)
-                                //.background(CheckmarkBackground2())
-                                .background(Circle().fill(Color.blue))
-                                .overlay(CheckmarkBackground2())
+                                .foregroundColor(.blue)
+                                //.background(Circle().fill(Color.blue))
+                                .overlay(
+                                    
+                                    Rectangle().fill(Color.blue.opacity(0.75)).frame(width: 16, height: 3)
+                                        .cornerRadius(1.5)
+                                        .offset(y:13)
+                                )
                             
-                        }
                             
-                    } else {
+                        } else {
+                            
+                            Text("\(day)")
+                                .font(.system(size: 15, weight: .regular,
+                                              design: .monospaced))
+                                .frame(width: 30, height: 30)
+                                .foregroundColor(.primary)
+                                //.background()
+                        } // end if else
                         
-                        Text("\(day)")
-                            .font(.system(size: 15, weight: .regular, 
-                                          design: .monospaced))
-                            .frame(width: 30, height: 30)
-                            //.background()
-                    }
-                }
+                    })
+                    
+                    
+                    
+                    
+                } // end ForEach
             }
         }
         .padding()
@@ -286,13 +330,14 @@ struct CalendarView: View {
     }
     
 
-    private func getDate(year: Int, month: Int, day: Int) -> Date {
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        return Calendar.current.date(from: components) ?? Date()
-    }
+//    private func getDate(year: Int, month: Int, day: Int) -> Date {
+//        var components = DateComponents()
+//        components.year = year
+//        components.month = month
+//        components.day = day
+//        //components.isLeapMonth = false ?
+//        return Calendar.current.date(from: components) ?? Date()
+//    }
 
 //    private func isSpecialDate(_ date: Date) -> Bool {
 //        let formatter = DateFormatter()
@@ -300,6 +345,7 @@ struct CalendarView: View {
 //        let dateString = formatter.string(from: date)
 //        return specialDates.contains(where: { formatter.string(from: $0) == dateString })
 //    }
+    
     private func isSpecialDate(_ dateComponents: DateComponents) -> Bool {
             return selectedDates.contains {
                 $0.year == dateComponents.year &&
@@ -898,7 +944,14 @@ struct PushupCounterView: View {
     
     @State private var completedDates: Set<DateComponents> = {
         if let data = UserDefaults.standard.data(forKey: "completedDates"),
-           let savedDates = try? JSONDecoder().decode(Set<DateComponents>.self, from: data) {
+           var savedDates = try? JSONDecoder().decode(Set<DateComponents>.self, from: data) {
+            // strip off 'isLeapMonth' from set comparison
+            savedDates = Set( savedDates.map({ dc in
+                var d2 = dc
+                d2.isLeapMonth = nil
+                return d2
+            }) )
+            
             return savedDates
         } else {
             return []
@@ -912,13 +965,17 @@ struct PushupCounterView: View {
     private var todayComponents : DateComponents {
         let currentDate = Date()
         let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day], from: currentDate)
+        var components = calendar.dateComponents([.year, .month, .day], from: currentDate)
+        components.isLeapMonth = nil
         return components
 
     }
     
     private var isTodayDone : Bool {
         return completedDates.contains(todayComponents)
+    }
+    private func isDayCompleted( _ comps : DateComponents ) -> Bool {
+        return completedDates.contains(comps)
     }
     
     private func removeToday() {
@@ -927,8 +984,34 @@ struct PushupCounterView: View {
         saveDatesToDisk()
     }
     
+    
+    @State private var showAlert = false
+    @State private var tappedDate: DateComponents?
+    
+    private var alertTitle : String {
+        if self.isDayCompleted(self.tappedDate!) {
+            return "Remove Day?"
+        } else {
+            return "Add Day?"
+        }
+    }
+    
+    private func toggleTappedDate() {
+        self.toggleDate(self.tappedDate!)
+    }
+    
+    private func toggleDate( _ dateComponents : DateComponents ) {
+        if completedDates.contains( dateComponents ) {
+            completedDates.remove(dateComponents)
+        } else {
+            completedDates.insert(dateComponents)
+        }
+        saveDatesToDisk()
+    }
+    
     private func addToday() {
        
+        print(" adding today.. ,", todayComponents)
         completedDates.insert(todayComponents)
         saveDatesToDisk()
         
@@ -1122,9 +1205,28 @@ struct PushupCounterView: View {
 //                .foregroundColor(.mint)
 //                .fixedSize()
             
-            CalendarView(selectedDates: $completedDates)
+            CalendarView(selectedDates: $completedDates) { dateComps in
+                
+                print("tapped date.. ", dateComps)
+                
+                self.tappedDate = dateComps
+                self.showAlert = true
+                
+            }
             
         }
+        .alert(isPresented: $showAlert) {
+            
+            Alert(
+                title: Text( self.alertTitle ),
+                //message: Text(self.alertText ),
+                primaryButton: .default(Text("Yes")) {
+                    self.toggleTappedDate()
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        
     }
     
     @ViewBuilder var bgCameraViewPortrait : some View {
