@@ -11,7 +11,15 @@ import ARKit
 import SceneKit
 
 
-
+extension ShapeStyle where Self == Color {
+    static var random: Color {
+        Color(
+            red: .random(in: 0...1),
+            green: .random(in: 0...1),
+            blue: .random(in: 0...1)
+        )
+    }
+}
 
 extension Date {
     func monthName() -> String {
@@ -219,7 +227,7 @@ struct CalendarView: View {
                 }
                 
                 ForEach(1...daysInMonth(year: currentYear, month: currentMonth), id: \.self) { day in
-                    
+                    //print(" -", day)
                     let todayComponents = DateComponents(year: currentYear, month: currentMonth, day: day)
                     
                     let nextDate = DateComponents(year: currentYear, month: currentMonth, day: day+1)
@@ -403,11 +411,19 @@ class FaceDistanceViewModel: ObservableObject {
     
     @Published var phoneOnFloor = false
         
-    @Published var faceDistances: [FaceDistance] = []
+    @Published
+    var faceDistances: [FaceDistance] = []
+    // private internal for fast updates
+    //private var _faceDistancesInternal: [FaceDistance] = []
+    //private var _lastPublish : Date = .distantPast
+        
+    //@Published
+    var faceDistance : Float = 0
     
-    @Published var faceDistance : Float = 0
+    @Published
+    var faceState : FaceState = .noFace
     
-    @Published var faceState : FaceState = .noFace
+    var paused : Bool = false // hack to not update @Published while alert is showing
     
     let thresholdPassed = PassthroughSubject<Void, Never>()
     
@@ -472,7 +488,9 @@ class FaceDistanceViewModel: ObservableObject {
         
         let newState = self.getStateForDistance(newDistance)
         
-        self.faceState = newState
+        if newState != self.faceState {
+            self.faceState = newState
+        }
 
         let prevState = stateHistory.last?.0 // nil or something different
         
@@ -500,6 +518,7 @@ class FaceDistanceViewModel: ObservableObject {
         var isPushup = false
         
         self.faceDistance = newDistance
+        //print(" faceDistance: ", faceDistance)
         
         if self.hasDonePushup() {
             
@@ -510,9 +529,16 @@ class FaceDistanceViewModel: ObservableObject {
             isPushup = true
         }
         
-        faceDistances.append( .init(distance: newDistance, 
+        faceDistances.append( .init(distance: newDistance,
                                     date: Date(), isPushup: isPushup) )
-                
+        
+        // delay redraw
+//        if abs(_lastPublish.timeIntervalSinceNow) > 0.1 {
+//            _lastPublish = Date()
+//            self.faceDistances = _faceDistancesInternal
+//        }
+        
+            
     }
     
 }
@@ -707,7 +733,16 @@ class ARKitViewController: UIViewController,
     private var averageVector : simd_float3 = .one
     private var prevAverageVector : simd_float3 = .zero
     
+    private var _lastTime : Date = Date.distantPast
+    
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        
+//        let minUpdateSeconds : Double = 1.0 / 10.0
+//        if abs(_lastTime.timeIntervalSinceNow) < 0.05 {
+//            print(" _ skip ", abs(_lastTime.timeIntervalSinceNow))
+//            return;
+//        }
+//        _lastTime = Date()
         
         let mat = frame.camera.transform
         let z_col : simd_float4 = mat.columns.2
@@ -754,10 +789,19 @@ class ARKitViewController: UIViewController,
 //        }
         
         DispatchQueue.main.async {
-            self.faceDistanceViewModel?.phoneOnFloor = isPhoneOnFloor
-            if isPhoneOnFloor && hasDepth {
-                self.faceDistanceViewModel?.addNewDistance(avgDepth)
+            
+            guard let model = self.faceDistanceViewModel else { return; }
+            
+            if model.paused { return; }
+            
+            if isPhoneOnFloor != model.phoneOnFloor {
+                model.phoneOnFloor = isPhoneOnFloor
             }
+            
+            if isPhoneOnFloor && hasDepth {
+                model.addNewDistance(avgDepth)
+            }
+            
         }
         
     }
@@ -799,10 +843,12 @@ class ARKitViewController: UIViewController,
 struct ARKitView: UIViewControllerRepresentable {
     
     
-    @ObservedObject var viewModel: FaceDistanceViewModel
+    //@ObservedObject // causes _update every frame
+    let viewModel: FaceDistanceViewModel
 
     func makeUIViewController(context: Context) -> ARKitViewController {
         
+        print(" Mkake ARKit??")
         let viewController = ARKitViewController()
         
         viewController.faceDistanceViewModel = viewModel
@@ -811,7 +857,7 @@ struct ARKitView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: ARKitViewController, 
                                 context: Context) {
-        
+        print(" _update ?")
     }
 }
 
@@ -933,6 +979,11 @@ struct CounterView: View {
 
 struct PushupCounterView: View {
     
+    @StateObject private var viewModel = FaceDistanceViewModel()
+    //@StateObject var viewModel : FaceDistanceViewModel // = FaceDistanceViewModel()
+    
+    //let viewModel = FaceDistanceViewModel()
+    
     @AppStorage("counter") var counter: Int = 0
             
     @State var faceTrackingEnabled : Bool = false
@@ -940,12 +991,12 @@ struct PushupCounterView: View {
     @State var showingHelp = false
     @AppStorage("hasSeenHelp") var hasSeenHelp : Bool = false
     
-    @StateObject private var viewModel = FaceDistanceViewModel()
     
     @State private var completedDates: Set<DateComponents> = {
         if let data = UserDefaults.standard.data(forKey: "completedDates"),
            var savedDates = try? JSONDecoder().decode(Set<DateComponents>.self, from: data) {
             // strip off 'isLeapMonth' from set comparison
+            print(" load dates? ")
             savedDates = Set( savedDates.map({ dc in
                 var d2 = dc
                 d2.isLeapMonth = nil
@@ -986,6 +1037,14 @@ struct PushupCounterView: View {
     
     
     @State private var showAlert = false
+    // Does not get called when alert is hidden?
+//    {
+//        didSet {
+//            self.viewModel.paused = showAlert
+//            print(" - pause? ", self.viewModel.paused )
+//        }
+//    }
+    
     @State private var tappedDate: DateComponents?
     
     private var alertTitle : String {
@@ -1026,6 +1085,37 @@ struct PushupCounterView: View {
     
     
     // MARK: - View Components
+    /*
+    @ViewBuilder var faceTrackingSectionPortrait : some View {
+        
+        VStack {
+            
+            Toggle(isOn: $faceTrackingEnabled, label: {
+                
+                HStack {
+                    Image(systemName: "sparkles")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(.yellow)
+                    
+                    Text("Auto Counter")
+                        .monospaced()
+                        .bold()
+                    
+                    Text("- Camera")
+                        .monospaced()
+                        .foregroundColor(.secondary)
+                    
+                    
+                }
+                
+                
+            })
+            .padding(4)
+        }
+        
+    }*/
+    
     @ViewBuilder var faceTrackingSectionPortrait : some View {
         
         VStack {
@@ -1066,11 +1156,13 @@ struct PushupCounterView: View {
                     
                     if viewModel.phoneOnFloor {
                         
+                        
                         VStack {
                             
                             Spacer()
                             
                             HStack {
+                                
                                 Spacer().frame(width:8)
                                 Text(String(format: "%.2f", viewModel.faceDistance ))
                                     .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
@@ -1086,6 +1178,7 @@ struct PushupCounterView: View {
                             }
                             
                         }.frame(height: 50)
+                        
                         
                     } else {
                         
@@ -1111,7 +1204,8 @@ struct PushupCounterView: View {
                         .cornerRadius(12)
                         
                         
-                    }
+                    } // endif
+                    
                     
                     
                 }
@@ -1121,6 +1215,7 @@ struct PushupCounterView: View {
         
         
     }
+    
     
     @ViewBuilder var actionsView : some View {
         
@@ -1207,30 +1302,22 @@ struct PushupCounterView: View {
             
             CalendarView(selectedDates: $completedDates) { dateComps in
                 
-                print("tapped date.. ", dateComps)
+                //print("tapped date.. ", dateComps)
                 
                 self.tappedDate = dateComps
                 self.showAlert = true
                 
             }
+            //.background(.random)
             
         }
-        .alert(isPresented: $showAlert) {
-            
-            Alert(
-                title: Text( self.alertTitle ),
-                //message: Text(self.alertText ),
-                primaryButton: .default(Text("Yes")) {
-                    self.toggleTappedDate()
-                },
-                secondaryButton: .cancel()
-            )
-        }
+        
         
     }
     
     @ViewBuilder var bgCameraViewPortrait : some View {
         
+        //let _ = Self._printChanges()
             
         ARKitView(viewModel: viewModel)
             
@@ -1240,6 +1327,7 @@ struct PushupCounterView: View {
 //                    .blendMode(.overlay)
 //            )
             
+        
             .overlay(
                 Rectangle()
                     .fill(LinearGradient(gradient: Gradient(colors: [Color(UIColor.secondarySystemBackground).opacity(1.0), Color(UIColor.secondarySystemBackground).opacity(0.5)]), startPoint: .top, endPoint: .bottom ))
@@ -1262,6 +1350,7 @@ struct PushupCounterView: View {
                 
                 if faceTrackingEnabled {
                     bgCameraViewPortrait
+                    //ARKitView(viewModel: viewModel)
                 }
                 
                 
@@ -1275,6 +1364,7 @@ struct PushupCounterView: View {
                     Divider()
                     
                     actionsView
+                        //.background(.random)
                     
                     Divider() // .padding()
                         //.padding(.top, 10)
@@ -1297,6 +1387,7 @@ struct PushupCounterView: View {
         
         
     }
+    
     
     @ViewBuilder func landscapeView(size: CGSize) -> some View {
         
@@ -1478,8 +1569,34 @@ struct PushupCounterView: View {
     }
     
     
-    // MARK: - Body
     
+    // MARK: - Body
+    /*
+    var body: some View {
+        
+        ZStack {
+            
+            ARKitView(viewModel: viewModel)
+            ///
+            ///
+            
+            Rectangle().fill(Color.random).frame(width: 100, height: 100)
+            
+            
+            Text(String(format: "%.2f", viewModel.faceDistance ))
+                .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundColor( .blue )
+                .padding(4)
+            
+
+            
+        } // end Z
+        
+    } // body
+    */
+    
+    
+    //
     var body: some View {
         
         Group {
@@ -1517,6 +1634,21 @@ struct PushupCounterView: View {
             
         } // end Group
         
+        .alert(isPresented: $showAlert) {
+            
+            Alert(
+                title: Text( self.alertTitle ),
+                //message: Text(self.alertText ),
+                primaryButton: .default(Text("Yes")) {
+                    self.toggleTappedDate()
+                },
+                secondaryButton: .cancel()
+            )
+        }
+        .onChange(of: showAlert) { newValue in
+            self.viewModel.paused = newValue
+        }
+        
         .onChange(of: faceTrackingEnabled) { newValue in
             
             UIApplication.shared.isIdleTimerDisabled = newValue
@@ -1542,9 +1674,12 @@ struct PushupCounterView: View {
     }
     
     
+    
 }
 
 #Preview {
+    
+    //PushupCounterView(viewModel: FaceDistanceViewModel())
     PushupCounterView()
         
 }

@@ -38,7 +38,8 @@ struct PushupCounterApp: App {
 struct PushupCounterApp: App {
     var body: some Scene {
         WindowGroup {
-            
+            //let model = FaceDistanceViewModel()
+            //PushupCounterView(viewModel: model )
             PushupCounterView()
         }
         
