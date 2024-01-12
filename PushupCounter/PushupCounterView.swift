@@ -407,21 +407,35 @@ struct FaceDistance {
     let isPushup : Bool
 }
 
-class FaceDistanceViewModel: ObservableObject {
+class DepthDataSource : ObservableObject {
     
-    @Published var phoneOnFloor = false
-        
     @Published
     var faceDistances: [FaceDistance] = []
-    // private internal for fast updates
-    //private var _faceDistancesInternal: [FaceDistance] = []
-    //private var _lastPublish : Date = .distantPast
         
-    //@Published
+    @Published
     var faceDistance : Float = 0
     
     @Published
     var faceState : FaceState = .noFace
+        
+}
+
+class FaceDistanceViewModel: ObservableObject {
+    
+    @Published var faceTrackingEnabled : Bool = false
+    
+    @Published var phoneOnFloor = false
+    
+//    @Published
+//    var faceDistances: [FaceDistance] = []
+//        
+//    //@Published
+//    var faceDistance : Float = 0
+//    
+//    @Published
+//    var faceState : FaceState = .noFace
+    
+    var depthData = DepthDataSource()
     
     var paused : Bool = false // hack to not update @Published while alert is showing
     
@@ -488,8 +502,8 @@ class FaceDistanceViewModel: ObservableObject {
         
         let newState = self.getStateForDistance(newDistance)
         
-        if newState != self.faceState {
-            self.faceState = newState
+        if newState != self.depthData.faceState {
+            self.depthData.faceState = newState
         }
 
         let prevState = stateHistory.last?.0 // nil or something different
@@ -511,13 +525,13 @@ class FaceDistanceViewModel: ObservableObject {
         
         
         // --- Track distances for graph --- //
-        if faceDistances.count >= 150 {
-            faceDistances.removeFirst()
+        if self.depthData.faceDistances.count >= 150 {
+            self.depthData.faceDistances.removeFirst()
         }
                 
         var isPushup = false
         
-        self.faceDistance = newDistance
+        self.depthData.faceDistance = newDistance
         //print(" faceDistance: ", faceDistance)
         
         if self.hasDonePushup() {
@@ -529,7 +543,7 @@ class FaceDistanceViewModel: ObservableObject {
             isPushup = true
         }
         
-        faceDistances.append( .init(distance: newDistance,
+        self.depthData.faceDistances.append( .init(distance: newDistance,
                                     date: Date(), isPushup: isPushup) )
         
         // delay redraw
@@ -862,6 +876,168 @@ struct ARKitView: UIViewControllerRepresentable {
 }
 
 
+struct AutoCountSectionLandscape : View {
+    
+    //@Binding var faceTrackingEnabled : Bool
+    
+    @ObservedObject var viewModel : FaceDistanceViewModel
+    @ObservedObject var dataSource : DepthDataSource
+    
+    var body : some View {
+        
+        ZStack {
+            
+            LineGraph(data: dataSource.faceDistances)
+                .frame(maxHeight: 182)
+                .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
+                                        
+            
+            VStack(spacing: 0) {
+                
+                Spacer()
+                
+                HStack {
+                    
+                    
+                    Spacer()
+                            
+                    Text(String(format: "Distance: %4.2f", dataSource.faceDistance ))
+                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+                        //.foregroundColor( .indigo)
+                        .padding(4)
+                    
+                    Text(dataSource.faceState.label)
+                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
+                        .multilineTextAlignment(.leading)
+                        .padding(4)
+                        .frame(width: 66)
+                    
+                    Spacer()
+                    
+                }
+                .foregroundColor( .blue )
+                .padding()
+                
+            }
+            .frame(maxHeight: 182)
+            
+            
+        }
+        
+        
+    }
+    
+}
+
+struct AutoCountSectionPortrait : View {
+    
+    //@Binding var faceTrackingEnabled : Bool
+    
+    @ObservedObject var viewModel : FaceDistanceViewModel
+    @ObservedObject var dataSource : DepthDataSource
+    
+    var body : some View {
+
+        VStack {
+            
+            Toggle(isOn: $viewModel.faceTrackingEnabled, label: {
+                
+                HStack {
+                    Image(systemName: "sparkles")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(.yellow)
+                    
+                    Text("Auto Counter")
+                        .monospaced()
+                        .bold()
+                    
+                    Text("- Camera")
+                        .monospaced()
+                        .foregroundColor(.secondary)
+                        
+                    
+                }
+                
+                    
+            })
+            .padding(4)
+            
+            if viewModel.faceTrackingEnabled {
+                
+                ZStack {
+
+                    LineGraph(data: dataSource.faceDistances)
+                        .frame(height: 70)
+                        .cornerRadius(8)
+                        .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
+                        .padding(2)
+                    
+                    
+                    if viewModel.phoneOnFloor {
+                                                
+                        VStack {
+                            
+                            Spacer()
+                            
+                            HStack {
+                                
+                                Spacer().frame(width:8)
+                                Text(String(format: "%.2f", dataSource.faceDistance ))
+                                    .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundColor( .blue )
+                                    .padding(4)
+                                
+                                Text(dataSource.faceState.label)
+                                    .font(Font.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundColor( .blue )
+                                    .padding(4)
+                                
+                                Spacer()
+                            }
+                            
+                        }.frame(height: 50)
+                        
+                        
+                    } else {
+                        
+                        VStack {
+                            Spacer()
+                            HStack(spacing: 0) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .resizable()
+                                    .frame(width: 22, height: 18)
+                                    .foregroundColor(.white)
+                                    .padding(.leading, 14)
+                                
+                                
+                                Text("Place Phone Flat on Floor")
+                                    .bold()
+                                    .foregroundColor( .white )
+                                    .padding(.horizontal)
+                            }
+                            Spacer()
+                        }
+                        .frame(maxHeight: 44)
+                        .background(Color.orange.opacity(0.88))
+                        .cornerRadius(12)
+                        
+                        
+                    } // endif
+                    
+                    
+                    
+                }
+            }
+            
+        }
+        
+        
+    }
+        
+    
+}
+
 struct CounterView: View {
     
     @Binding var counter: Int
@@ -986,7 +1162,7 @@ struct PushupCounterView: View {
     
     @AppStorage("counter") var counter: Int = 0
             
-    @State var faceTrackingEnabled : Bool = false
+    //@State var faceTrackingEnabled : Bool = false
     
     @State var showingHelp = false
     @AppStorage("hasSeenHelp") var hasSeenHelp : Bool = false
@@ -1116,6 +1292,7 @@ struct PushupCounterView: View {
         
     }*/
     
+    /*
     @ViewBuilder var faceTrackingSectionPortrait : some View {
         
         VStack {
@@ -1215,7 +1392,7 @@ struct PushupCounterView: View {
         
         
     }
-    
+    */
     
     @ViewBuilder var actionsView : some View {
         
@@ -1301,14 +1478,15 @@ struct PushupCounterView: View {
 //                .fixedSize()
             
             CalendarView(selectedDates: $completedDates) { dateComps in
-                
-                //print("tapped date.. ", dateComps)
-                
+                                
                 self.tappedDate = dateComps
                 self.showAlert = true
                 
             }
-            //.background(.random)
+            
+//            #if DEBUG
+//            .background(.random)
+//            #endif
             
         }
         
@@ -1348,7 +1526,7 @@ struct PushupCounterView: View {
             
             ZStack {
                 
-                if faceTrackingEnabled {
+                if viewModel.faceTrackingEnabled {
                     bgCameraViewPortrait
                     //ARKitView(viewModel: viewModel)
                 }
@@ -1359,7 +1537,9 @@ struct PushupCounterView: View {
                     CounterView(counter: $counter, 
                                 showingHelp: $showingHelp )
                     
-                    faceTrackingSectionPortrait
+                    //faceTrackingSectionPortrait
+                    AutoCountSectionPortrait( viewModel: viewModel,
+                                              dataSource: viewModel.depthData )
                     
                     Divider()
                     
@@ -1399,7 +1579,7 @@ struct PushupCounterView: View {
             // Left Column
             ZStack {
                 
-                if faceTrackingEnabled {
+                if viewModel.faceTrackingEnabled {
                     
                     ARKitView(viewModel: viewModel)
                         .overlay(
@@ -1439,13 +1619,13 @@ struct PushupCounterView: View {
 
                         
                         
-                        Toggle(isOn: $faceTrackingEnabled, label: {
+                        Toggle(isOn: $viewModel.faceTrackingEnabled, label: {
                             Text("Enable Auto Counter")
                         }).padding(.horizontal, 30)
                         
                         
                         
-                        if !faceTrackingEnabled {
+                        if !viewModel.faceTrackingEnabled {
                             
                             Text("Use the front facing camera to auto count pushups")
                                 .foregroundColor(.secondary)
@@ -1484,48 +1664,10 @@ struct PushupCounterView: View {
                     
                     Spacer()
                     
-                    if faceTrackingEnabled {
+                    if viewModel.faceTrackingEnabled {
                         
-                        
-                        
-                        ZStack {
-                            
-                            LineGraph(data: viewModel.faceDistances)
-                                .frame(maxHeight: 182)
-                                .opacity(viewModel.phoneOnFloor ? 1.0 : 0.4)
-                                                        
-                            
-                            VStack(spacing: 0) {
-                                
-                                Spacer()
-                                
-                                HStack {
-                                    
-                                    
-                                    Spacer()
-                                            
-                                    Text(String(format: "Distance: %4.2f", viewModel.faceDistance ))
-                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
-                                        //.foregroundColor( .indigo)
-                                        .padding(4)
-                                    
-                                    Text(viewModel.faceState.label)
-                                        .font(Font.system(size: 13, weight: .semibold, design: .monospaced))
-                                        .multilineTextAlignment(.leading)
-                                        .padding(4)
-                                        .frame(width: 66)
-                                    
-                                    Spacer()
-                                    
-                                }
-                                .foregroundColor( .blue )
-                                .padding()
-                                
-                            }
-                            .frame(maxHeight: 182)
-                            
-                            
-                        }
+                        AutoCountSectionLandscape(viewModel: viewModel,
+                                                  dataSource: viewModel.depthData)
                         
                     }
                     
@@ -1649,7 +1791,7 @@ struct PushupCounterView: View {
             self.viewModel.paused = newValue
         }
         
-        .onChange(of: faceTrackingEnabled) { newValue in
+        .onChange(of: viewModel.faceTrackingEnabled) { newValue in
             
             UIApplication.shared.isIdleTimerDisabled = newValue
         }
